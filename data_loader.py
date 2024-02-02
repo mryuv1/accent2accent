@@ -9,6 +9,7 @@ import skimage.io
 from scipy.io.wavfile import write
 import noisereduce as nr
 import soundfile as sf
+import pickle
 
 
 
@@ -65,7 +66,31 @@ class DataLoader:
             output_path = os.path.join(output_dir, new_filename)
             sf.write(output_path, y_normalized, sr)
 
+    def clean_spectogram_arrays(self):
+        # Extract spectrograms from content_spectrograms
+        self.content_spectrograms = [item[1] for item in self.content_spectrograms]
+
+        # Extract spectrograms from style_spectrograms
+        self.style_spectrograms = [item[1] for item in self.style_spectrograms]
+
+    def save_spectograms_to_pickle(self):
+
+        # Define file paths for saving the pickle files
+        content_pickle_path = r'C:\Users\dvirpe\Desktop\github\accent2accent\dataset\pickle_data\content_spectrograms.pkl'
+        style_pickle_path = r'C:\Users\dvirpe\Desktop\github\accent2accent\dataset\pickle_data\style_spectrograms.pkl'
+
+        # Save content_spectrograms_only to a pickle file
+        with open(content_pickle_path, 'wb') as content_pickle_file:
+            pickle.dump(self.content_spectrograms, content_pickle_file)
+
+        # Save style_spectrograms_only to a pickle file
+        with open(style_pickle_path, 'wb') as style_pickle_file:
+            pickle.dump(self.style_spectrograms, style_pickle_file)
+
+
 if __name__ == "__main__":
     data_loader = DataLoader(r"C:\Users\dvirpe\Desktop\github\accent2accent\dataset\test_run_wav", r"C:\Users\dvirpe\Desktop\github\accent2accent\dataset\test_run_wav")
     data_loader.wav_to_spectrogram()
-    data_loader.spectrogram_to_wav(data_loader.content_spectrograms, r"C:\Users\dvirpe\Desktop\github\accent2accent\dataset\test_run_img")
+    #data_loader.spectrogram_to_wav(data_loader.content_spectrograms, r"C:\Users\dvirpe\Desktop\github\accent2accent\dataset\test_run_img")
+    data_loader.clean_spectogram_arrays()
+    data_loader.save_spectograms_to_pickle()
