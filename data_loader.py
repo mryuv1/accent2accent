@@ -6,90 +6,66 @@ import numpy as np
 import soundfile as sf
 from scipy.io import wavfile
 import skimage.io
+from scipy.io.wavfile import write
+import noisereduce as nr
+import soundfile as sf
+
+
 
 class DataLoader:
-    def __init__(self, wav_dir, img_dir):
-        """
-        Initializes the DataLoader with the directory of WAV files and the target directory for images.
-        """
-        self.wav_dir = wav_dir
-        self.img_dir = img_dir
-        # Ensure img_dir exists
-        os.makedirs(self.img_dir, exist_ok=True)
+    def __init__(self, content_wav_dir, style_wav_dir):
+        self.content_wav_dir = content_wav_dir
+        self.style_wav_dir = style_wav_dir
+        self.content_spectrograms = []  # List of tuples (file_name, S)
+        self.style_spectrograms = []  # List of tuples (file_name, S)
 
     def wav_to_spectrogram(self):
-        """
-        Converts WAV files in the specified directory to spectrogram images and saves them to the target directory.
-        """
-        # Iterate over each file in the WAV directory
-        for filename in os.listdir(self.wav_dir):
+        # Process content WAV files
+        for filename in os.listdir(self.content_wav_dir):
             if filename.endswith('.wav'):
-                # Construct the full file path
-                wav_path = os.path.join(self.wav_dir, filename)
-                # Load the audio file
-                y, sr = librosa.load(wav_path)
-                
-                # Generate a Mel-spectrogram
-                S = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=128)
-                # Convert to log scale (dB)
-                S_dB = librosa.power_to_db(S, ref=np.max)
-                
-                # Plotting
-                plt.figure(figsize=(10, 4))
-                librosa.display.specshow(S_dB, sr=sr, x_axis='time', y_axis='mel')
-                plt.axis('off')
-                plt.tight_layout(pad=0)
+                S, target_amplitude = self._process_wav_file(os.path.join(self.content_wav_dir, filename))
+                self.content_spectrograms.append((filename, S, target_amplitude))
 
+        # Process style WAV files
+        for filename in os.listdir(self.style_wav_dir):
+            if filename.endswith('.wav'):
+                S = self._process_wav_file(os.path.join(self.style_wav_dir, filename))
+                self.style_spectrograms.append((filename, S))
 
-                # Save the figure with adjusted dpi to match the figsize
-                # The dpi value of 100 is standard, but you may adjust it as needed for your specific figure size
-                
-                # Save the figure
-                img_filename = filename.replace('.wav', '.png')  # Change file extension to .png
-                img_path = os.path.join(self.img_dir, img_filename)
-                plt.savefig(img_path, bbox_inches='tight', pad_inches=0, dpi=100)
-                plt.close()
-
-                self.spectrogram_to_wav(S_dB, sr)
-
-    def image_to_mel_spectrogram(image_path):
-        # Load the image file
-        img = skimage.io.imread(image_path)
-        # Convert the image to grayscale since the color doesn't contain any additional information
-        img_gray = np.mean(img, axis=2)
-        # Assume the image values are in dB, convert them back to power
-        # This assumes that the max value in the image corresponds to 0 dB
-        S_dB = img_gray / img_gray.max() * -80  # Adjust this scaling factor as needed
-        S = librosa.db_to_power(S_dB)
-
-        return S
-
-    def mel_spectrogram_to_audio(M, sr=22050, hop_length=512, n_fft=2048):
-        # Convert Mel spectrogram back to STFT
-        S_inv = librosa.feature.inverse.mel_to_stft(M, sr=sr, n_fft=n_fft)
-        # Use the Griffin-Lim algorithm to estimate the phase
-        y_inv = librosa.griffinlim(S_inv, n_iter=32, hop_length=hop_length, win_length=n_fft)
-        return y_inv
-    
-
-    def reconstruct_wav():
-            # Replace 'path_to_image.png' with the actual path to your Mel spectrogram image
-        image_path = 'path_to_image.png'
-
-        # The sampling rate and other parameters must match those that were used to create the Mel spectrogram
-        sr = 22050  # Sampling rate
-        hop_length = 512
+    def _process_wav_file(self, wav_path):
+        # Load the audio file
+        y, sr = librosa.load(wav_path)
+        target_amplitude = np.max(np.abs(y))
+        # Generate a Mel-spectrogram
         n_fft = 2048
+        hop_length = 512
+        n_mels = 256
+        #S = librosa.feature.melspectrogram(y=y, sr=sr, n_fft=n_fft, hop_length=hop_length, n_mels=n_mels)
+        S = librosa.feature.melspectrogram(y=y, sr=sr, n_fft=n_fft, hop_length=hop_length, n_mels=n_mels, window='hann')
+        # Convert to log scale (dB)
+        S_dB = librosa.power_to_db(S, ref=np.max)
+        return (S_dB,target_amplitude)
 
-        # Convert the image to a Mel spectrogram
-        mel_spectrogram = image_to_mel_spectrogram(image_path)
+    def spectrogram_to_wav(self, spectrograms, output_dir, sr=22050):
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
 
-        # Convert the Mel spectrogram to audio
-        reconstructed_audio = mel_spectrogram_to_audio(mel_spectrogram, sr=sr, hop_length=hop_length, n_fft=n_fft)
-
-        # Save the reconstructed audio to a WAV file
-        wavfile.write('reconstructed_audio.wav', sr, reconstructed_audio)
+        for filename, S_dB, target_amplitude in spectrograms:
+            # Convert dB back to power
+            S = librosa.db_to_power(S_dB)
+            # Inverse Mel spectrogram to audio
+            y = librosa.feature.inverse.mel_to_audio(S, sr=sr)
+            # Normalize the audio signal
+            normalization_factor = target_amplitude / np.max(np.abs(y))
+            y_normalized = y * normalization_factor
+            # Reduce noise
+            y_normalized = nr.reduce_noise(y_normalized, sr=sr)
+            # Save the audio file
+            new_filename = f"{os.path.splitext(filename)[0]}_converted.wav"
+            output_path = os.path.join(output_dir, new_filename)
+            sf.write(output_path, y_normalized, sr)
 
 if __name__ == "__main__":
-    data_loader = DataLoader(r"C:\Users\dvirpe\Desktop\github\accent2accent\dataset\test_run_wav", r"C:\Users\dvirpe\Desktop\github\accent2accent\dataset\test_run_img")
+    data_loader = DataLoader(r"C:\Users\dvirpe\Desktop\github\accent2accent\dataset\test_run_wav", r"C:\Users\dvirpe\Desktop\github\accent2accent\dataset\test_run_wav")
     data_loader.wav_to_spectrogram()
+    data_loader.spectrogram_to_wav(data_loader.content_spectrograms, r"C:\Users\dvirpe\Desktop\github\accent2accent\dataset\test_run_img")
