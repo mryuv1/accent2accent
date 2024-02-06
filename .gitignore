@@ -1,1 +1,3 @@
 model.ckpt
+accent2accent/lib_/dataset/*
+*.wav
