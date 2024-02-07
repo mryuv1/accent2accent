@@ -14,9 +14,13 @@ import pytorch_lightning as pl
 from argparse import ArgumentParser
 from pathlib import Path
 from sklearn.model_selection import train_test_split
-from lib_.dataset import files_in
-
-from lib_.dataset import AccentDataset, files_in, EndlessAccentDataset
+from dataset import files_in
+import pytorch_lightning as pl
+from sklearn.model_selection import train_test_split
+from torch import Tensor
+from torch.utils.data import DataLoader
+from torchvision import transforms
+from dataset import AccentDataset, files_in, EndlessAccentDataset
 
 
 class DataModule(pl.LightningDataModule):
@@ -37,54 +41,70 @@ class DataModule(pl.LightningDataModule):
 
         return parser
 
-    def __init__(self, curr_dir, content_wav_dir, style_wav_dir, test_content=None, test_style=None, **_):
+    def __init__(self, curr_dir, content_wav_dir, style_wav_dir, batch_size=8, test_content=None, test_style=None, **_):
         self.content_wav_dir = content_wav_dir
         self.style_wav_dir = style_wav_dir
         self.curr_dir = curr_dir
+        self.batch_size = batch_size
         self.content_spectrograms = []  # List of tuples (file_name, S)
         self.style_spectrograms = []  # List of tuples (file_name, S)
-        self.tr_content_pickle_path = os.path.join(curr_dir, "lib_", "dataset", "pickle_data", "train",
+        self.tr_content_pickle_path = os.path.join(curr_dir, "", "dataset", "pickle_data", "train",
                                                    "content_spectrograms")
-        self.te_content_pickle_path = os.path.join(curr_dir, "lib_", "dataset", "pickle_data", "test",
+        self.te_content_pickle_path = os.path.join(curr_dir, "", "dataset", "pickle_data", "test",
                                                    "content_spectrograms")
-        self.te_style_pickle_path = os.path.join(curr_dir, "lib_", "dataset", "pickle_data", "test",
+        self.te_style_pickle_path = os.path.join(curr_dir, "", "dataset", "pickle_data", "test",
                                                  "style_spectrograms")
-        self.tr_style_pickle_path = os.path.join(curr_dir, "lib_", "dataset", "pickle_data", "train",
+        self.tr_style_pickle_path = os.path.join(curr_dir, "", "dataset", "pickle_data", "train",
                                                  "style_spectrograms")
         # Check if the directories exists
         if self.create_dirs():
             self.wav_to_spectrogram()
             #    self.clean_spectogram_arrays()
             self.save_spectograms_to_pickle()
-            # # # data_loader.spectrogram_to_wav(data_loader.content_spectrograms, r"C:\Users\dvirpe\Desktop\github\accent2accent\dataset\test_run_img")
-            # data_loader.clean_spectogram_arrays()
-            # data_loader.save_spectograms_to_pickle()
-            # TODO - maybe will crash RAM, need maybe to do it in iterations ! WELL WORK ON BATCHES FROM MEMORY (PICKLE OR WHATEVER)
 
-    # train_transforms = self.train_transforms()
-    #  self.train_dataset = EndlessAccentDataset(content_files, style_files,
-    #                                      style_transform=train_transforms['style'],
-    #                                      content_transform=train_transforms['content'])
-    #
-    #  test_transforms = self.test_transforms()
-    #  self.test_dataset = AccentDataset(test_content_files, test_style_files,
-    #                                         style_transform=test_transforms['style'],
-    #                                         content_transform=test_transforms['content'])
-    #  self.batch_size = batch_size
+            # TODO - maybe will crash RAM, need maybe to do it in iterations ! WELL WORK ON BATCHES FROM MEMORY (PICKLE OR WHATEVER)
+        self.train_content_files = files_in(self.tr_content_pickle_path)
+        self.train_style_files = files_in(self.tr_style_pickle_path)
+        self.test_content_files = files_in(self.te_content_pickle_path)
+        self.test_style_files = files_in(self.te_style_pickle_path)
+        self.train_dataset = AccentDataset(self.train_content_files, self.train_style_files)
+        self.test_dataset = AccentDataset(self.test_content_files, self.test_style_files)
+
+
+    def train_dataloader(self):
+        return DataLoader(self.train_dataset, batch_size=self.batch_size)
+
+    def val_dataloader(self):
+        return DataLoader(self.test_dataset, batch_size=1)
+
+    def test_dataloader(self):
+        return DataLoader(self.test_dataset, batch_size=1)
+    def transfer_batch_to_device(self, batch, device):
+        for k, v in batch.items():
+            if isinstance(v, Tensor):
+                batch[k] = v.to(device)
+        return batch
+
+    def prepare_data(self):
+        pass
+
+    def setup(self, stage=None):
+        pass
+
 
     def create_dirs(self):
         if not os.path.exists(
-                os.path.join(self.curr_dir, "lib_", "dataset", "pickle_data", "train", "content_spectrograms")):
-            if not os.path.exists(os.path.join(self.curr_dir, "lib_", "dataset", "pickle_data", "train")):
-                os.makedirs(os.path.join(self.curr_dir, "lib_", "dataset", "pickle_data", "train"))
-            os.makedirs(os.path.join(self.curr_dir, "lib_", "dataset", "pickle_data", "train", "content_spectrograms"))
-            os.makedirs(os.path.join(self.curr_dir, "lib_", "dataset", "pickle_data", "train", "style_spectrograms"))
+                os.path.join(self.curr_dir, "", "dataset", "pickle_data", "train", "content_spectrograms")):
+            if not os.path.exists(os.path.join(self.curr_dir, "", "dataset", "pickle_data", "train")):
+                os.makedirs(os.path.join(self.curr_dir, "", "dataset", "pickle_data", "train"))
+            os.makedirs(os.path.join(self.curr_dir, "", "dataset", "pickle_data", "train", "content_spectrograms"))
+            os.makedirs(os.path.join(self.curr_dir, "", "dataset", "pickle_data", "train", "style_spectrograms"))
             if not os.path.exists(
-                    os.path.join(self.curr_dir, "lib_", "dataset", "pickle_data", "test", "content_spectrograms")):
-                if not os.path.exists(os.path.join(self.curr_dir, "lib_", "dataset", "pickle_data", "test")):
-                    os.makedirs(os.path.join(self.curr_dir, "lib_", "dataset", "pickle_data", "test"))
-            os.makedirs(os.path.join(self.curr_dir, "lib_", "dataset", "pickle_data", "test", "content_spectrograms"))
-            os.makedirs(os.path.join(self.curr_dir, "lib_", "dataset", "pickle_data", "test", "style_spectrograms"))
+                    os.path.join(self.curr_dir, "", "dataset", "pickle_data", "test", "content_spectrograms")):
+                if not os.path.exists(os.path.join(self.curr_dir, "", "dataset", "pickle_data", "test")):
+                    os.makedirs(os.path.join(self.curr_dir, "", "dataset", "pickle_data", "test"))
+            os.makedirs(os.path.join(self.curr_dir, "", "dataset", "pickle_data", "test", "content_spectrograms"))
+            os.makedirs(os.path.join(self.curr_dir, "", "dataset", "pickle_data", "test", "style_spectrograms"))
             return True
         return False
 
@@ -99,7 +119,7 @@ class DataModule(pl.LightningDataModule):
                 if filename.endswith('.wav'):
                     S, target_amplitude = self._process_wav_file(file_path)
                     self.content_spectrograms.append((file_path, S, target_amplitude))
-            break
+
         for directory in os.listdir(self.style_wav_dir):
             if directory.startswith('.'):
                 continue
@@ -108,7 +128,6 @@ class DataModule(pl.LightningDataModule):
                 if file_path.endswith('.wav'):
                     S, target_amplitude = self._process_wav_file(file_path)
                     self.style_spectrograms.append((file_path, S, target_amplitude))
-            break
 
     def _process_wav_file(self, wav_path):
         # Load the audio file
@@ -193,17 +212,10 @@ if __name__ == "__main__":
     current_directory = os.path.dirname(os.path.abspath(__file__))
 
     # Construct relative paths from the current directory
-    content_dir = os.path.join(current_directory, 'lib_', 'dataset', 'content', "indian")
-    style_dir = os.path.join(current_directory, 'lib_', 'dataset', 'style', "american")
-    # REMOVE directory lib/dataset/pickle_data recursively
-    if os.path.exists(os.path.join(current_directory, 'lib_', 'dataset', 'pickle_data')):
-        import shutil
+    content_dir = os.path.join(current_directory, '', 'dataset', 'content', "indian")
+    style_dir = os.path.join(current_directory, '', 'dataset', 'style', "american")
 
-        shutil.rmtree(os.path.join(current_directory, 'lib_', 'dataset', 'pickle_data'))
 
-    a = DataModule(current_directory, content_dir, style_dir)
-    # data_loader = DataLoader(r"C:\Users\dvirpe\Desktop\github\accent2accent\dataset\test_run_wav", r"C:\Users\dvirpe\Desktop\github\accent2accent\dataset\test_run_wav")
-    # data_loader.wav_to_spectrogram()
-    # #data_loader.spectrogram_to_wav(data_loader.content_spectrograms, r"C:\Users\dvirpe\Desktop\github\accent2accent\dataset\test_run_img")
-    # data_loader.clean_spectogram_arrays()
-    # data_loader.save_spectograms_to_pickle()
+    a = DataModule(current_directory, content_dir, style_dir,1)
+
+

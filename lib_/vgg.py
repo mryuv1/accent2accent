@@ -1,128 +1,94 @@
-import warnings
-
+import os
+import torch
 from torch import nn
-from torchvision import models
-from torchvision.transforms import transforms
+from torch.utils.data import DataLoader
+from torchvision import transforms
+from torchvision.datasets import ImageFolder
+import torchvision.models as models
+from data_loader import DataModule
 
-
-class VGGEncoder(nn.Module):
-    def __init__(self, normalize=True, post_activation=True):
-        super().__init__()
-
-        if normalize:
-            mean = [0.485, 0.456, 0.406]
-            std = [0.229, 0.224, 0.225]
-            self.normalize = transforms.Normalize(mean=mean, std=std)
-        else:
-            self.normalize = nn.Identity()
-
-        if post_activation:
-            layer_names = {'relu1_1', 'relu2_1', 'relu3_1', 'relu4_1'}
-        else:
-            layer_names = {'conv1_1', 'conv2_1', 'conv3_1', 'conv4_1'}
-        blocks, block_names, scale_factor, out_channels = extract_vgg_blocks(models.vgg19(pretrained=True).features,
-                                                                             layer_names)
-
-        self.blocks = nn.ModuleList(blocks)
-        self.block_names = block_names
-        self.scale_factor = scale_factor
-        self.out_channels = out_channels
-
-    def forward(self, xs):
-        xs = self.normalize(xs)
-
-        features = []
-        for block in self.blocks:
-            xs = block(xs)
-            features.append(xs)
-
-        return features
-
-    def freeze(self):
-        self.eval()
-        for parameter in self.parameters():
-            parameter.requires_grad = False
-
-
-# For AdaIn, not used in AdaConv.
-class VGGDecoder(nn.Module):
+# Define the VGG19 model
+class VGG19(nn.Module):
     def __init__(self):
         super().__init__()
+        self.vgg19 = LoadVGG19()
 
-        layers = [
-            self._conv(512, 256),
-            nn.ReLU(),
-            self._upsample(),
+    def forward(self, x):
+        return self.vgg19(x)
 
-            self._conv(256, 256),
-            nn.ReLU(),
-            self._conv(256, 256),
-            nn.ReLU(),
-            self._conv(256, 256),
-            nn.ReLU(),
-            self._conv(256, 128),
-            nn.ReLU(),
-            self._upsample(),
+# Load VGG19 model with modified architecture
+def LoadVGG19():
+    vgg19 = models.vgg19(pretrained=False)
+    # Modify the first layer to accept 1 channel input
+    vgg19.features[0] = torch.nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1)
 
-            self._conv(128, 128),
-            nn.ReLU(),
-            self._conv(128, 64),
-            nn.ReLU(),
-            self._upsample(),
+    # Modify the fully connected layers
+    num_features = vgg19.classifier[0].in_features
+    vgg19.classifier = torch.nn.Sequential(
+        torch.nn.Linear(num_features, 4096),
+        torch.nn.ReLU(inplace=True),
+        torch.nn.Dropout(),
+        torch.nn.Linear(4096, 4096),
+        torch.nn.ReLU(inplace=True),
+        torch.nn.Dropout(),
+        torch.nn.Linear(4096, 2),  # Change num_classes to the number of output classes
+    )
+    return vgg19
 
-            self._conv(64, 64),
-            nn.ReLU(),
-            self._conv(64, 3),
-        ]
-        self.layers = nn.Sequential(*layers)
+if __name__ == "__main__":
+    current_directory = os.path.dirname(os.path.abspath(__file__))
 
-    def forward(self, content):
-        ys = self.layers(content)
-        return ys
+    # Construct relative paths from the current directory
+    content_dir = os.path.join(current_directory, 'lib_', 'dataset', 'content', "indian")
+    style_dir = os.path.join(current_directory, 'lib_', 'dataset', 'style', "american")
 
-    @staticmethod
-    def _conv(in_channels, out_channels, kernel_size=3, padding_mode='reflect'):
-        padding = (kernel_size - 1) // 2
-        return nn.Conv2d(in_channels=in_channels,
-                         out_channels=out_channels,
-                         kernel_size=kernel_size,
-                         padding=padding,
-                         padding_mode=padding_mode)
+    # Initialize PyTorch DataLoader
+    dataloader = DataModule(current_directory, content_dir, style_dir, 8).train_dataloader()
 
-    @staticmethod
-    def _upsample(scale_factor=2, mode='nearest'):
-        return nn.Upsample(scale_factor=scale_factor, mode=mode)
+    # Initialize the model
+    model = VGG19()
 
+    # Set device to CPU
+    device = torch.device('cpu')
+   # device = torch.device("cpu")
+    model.to(device)
 
-def extract_vgg_blocks(layers, layer_names):
-    blocks, current_block, block_names = [], [], []
-    scale_factor, out_channels = -1, -1
-    depth_idx, relu_idx, conv_idx = 1, 1, 1
-    for layer in layers:
-        name = ''
-        if isinstance(layer, nn.Conv2d):
-            name = f'conv{depth_idx}_{conv_idx}'
-            current_out_channels = layer.out_channels
-            layer.padding_mode = 'reflect'
-            conv_idx += 1
-        elif isinstance(layer, nn.ReLU):
-            name = f'relu{depth_idx}_{relu_idx}'
-            layer = nn.ReLU(inplace=False)
-            relu_idx += 1
-        elif isinstance(layer, nn.AvgPool2d) or isinstance(layer, nn.MaxPool2d):
-            name = f'pool{depth_idx}'
-            depth_idx += 1
-            conv_idx = 1
-            relu_idx = 1
-        else:
-            warnings.warn(f' Unexpected layer type: {type(layer)}')
+    # Define loss function and optimizer
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
-        current_block.append(layer)
-        if name in layer_names:
-            blocks.append(nn.Sequential(*current_block))
-            block_names.append(name)
-            scale_factor = 1 * 2 ** (depth_idx - 1)
-            out_channels = current_out_channels
-            current_block = []
+    # Training loop
+    num_epochs = 5
+    for epoch in range(num_epochs):
+        model.train()
+        running_loss = 0.0
+        for batch in dataloader:
+            inputs = batch["content"].unsqueeze(1)
+            targets = batch["style"].unsqueeze(1)
+            #Stack the inputs and targets to one vector, with inputs label 1 and targets label 0
+            stacked = torch.cat((inputs, targets), 0)
+            one_hot_targets = torch.cat((torch.ones(inputs.shape[0]), torch.zeros(targets.shape[0])))
+            #Convert one_hot_targets to float
+            one_hot_targets = one_hot_targets.type(torch.LongTensor)
+            #Create one hot targets, when the first 8 are 1 and the last 8 are 0
+            stacked, targets = stacked.to(device), targets.to(device)
 
-    return blocks, block_names, scale_factor, out_channels
+            # Forward pass
+            outputs = model(stacked)
+            loss = criterion(outputs, one_hot_targets)
+            print('Current Loss:', loss.item())
+            # Backward pass and optimization
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            running_loss += loss.item() * inputs.size(0)
+
+        # Print average loss at the end of each epoch
+        epoch_loss = running_loss / len(dataloader.dataset)
+        print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}")
+#SAve the model weights as pth
+    torch.save(model.state_dict(), os.path.join(current_directory, 'lib_', 'vgg19_new.pth'))
+    print("Model weights saved to vgg19.pth")
+
+exit(1)

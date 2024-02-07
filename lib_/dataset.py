@@ -3,27 +3,31 @@ import warnings
 from pathlib import Path
 
 from PIL import Image
+import torch
+import pickle
 from torch.utils.data import IterableDataset, Dataset
 from torchvision.transforms import ToTensor, Compose, Resize, CenterCrop
 from torchvision.utils import save_image
 
-
 def files_in(dir):
     return list(sorted(Path(dir).glob('*')))
 
+
+def load(file):
+    # Load the pickle file
+    with open(file, 'rb') as f:
+        data = pickle.load(f)
+
+    # Convert the loaded data to a torch tensor
+    tensor_data = torch.tensor(data)
+
+    return tensor_data
 
 def save(img_tensor, file):
     if img_tensor.ndim == 4:
         assert len(img_tensor) == 1
 
     save_image(img_tensor, str(file))
-
-
-def load(file):
-    #TODO NEED TO MODIFY TO OUR DATASET FORMAT
-    img = Image.open(str(file))
-    img = img.convert('RGB')
-    return img
 
 
 def style_transforms(size=256):
@@ -43,7 +47,7 @@ def content_transforms(min_size=None):
     return Compose(transforms)
 
 class AccentDataset(Dataset):
-    def _init_(self,content_files, style_files, content_transform=None, style_transform=None):
+    def __init__(self,content_files, style_files, content_transform=None, style_transform=None):
         self.content_files = content_files
         self.style_files = style_files
 
@@ -51,19 +55,22 @@ class AccentDataset(Dataset):
         self.content_transform = id if content_transform is None else content_transform
         self.style_transform = id if style_transform is None else style_transform
 
-    def _getitem_(self, idx):
+    def __getitem__(self, idx):
         content_file, style_file = self.files_at_index(idx)
-
         content_img = load(content_file)
         style_img = load(style_file)
 
         content_img = self.content_transform(content_img)
         style_img = self.style_transform(style_img)
-
+        #padd the y axis to 500
+        content_img = torch.nn.functional.pad(content_img, ( 0, 256 - content_img.shape[1]), 'constant', 0)
+        style_img = torch.nn.functional.pad(style_img, (0,  256 - style_img.shape[1]), 'constant', 0)
         return {
             'content': content_img,
             'style': style_img,
         }
+    def __len__(self):
+        return len(self.content_files) * len(self.style_files)
     def files_at_index(self, idx):
         content_idx = idx % len(self.content_files)
         style_idx = idx // len(self.content_files)
@@ -76,11 +83,11 @@ class EndlessAccentDataset(IterableDataset):
     Wrapper for AccentDataset which loops infinitely.
     Usefull when training based on iterations instead of epochs
     """
-
-    def _init_(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         self.dataset = AccentDataset(*args, **kwargs)
-
-    def _iter_(self):
+    def __len__(self):
+        return len(self.dataset)
+    def __iter__(self):
         while True:
             idx = random.randrange(len(self.dataset))
 
@@ -91,63 +98,3 @@ class EndlessAccentDataset(IterableDataset):
                 warnings.warn(f'\n{str(e)}\n\tFiles: [{str(files[0])}, {str(files[1])}]')
 
 
-    def files_at_index(self, idx):
-        content_idx = idx % len(self.content_files)
-        style_idx = idx // len(self.content_files)
-
-        assert 0 <= content_idx < len(self.content_files)
-        assert 0 <= style_idx < len(self.style_files)
-        return self.content_files[content_idx], self.style_files[style_idx]
-class StylizationDataset(Dataset):
-    def _init_(self, content_files, style_files, content_transform=None, style_transform=None):
-        self.content_files = content_files
-        self.style_files = style_files
-
-        id = lambda x: x
-        self.content_transform = id if content_transform is None else content_transform
-        self.style_transform = id if style_transform is None else style_transform
-
-    def _getitem_(self, idx):
-        content_file, style_file = self.files_at_index(idx)
-
-        content_img = load(content_file)
-        style_img = load(style_file)
-
-        content_img = self.content_transform(content_img)
-        style_img = self.style_transform(style_img)
-
-        return {
-            'content': content_img,
-            'style': style_img,
-        }
-
-    def _len_(self):
-        return len(self.content_files) * len(self.style_files)
-
-    def files_at_index(self, idx):
-        content_idx = idx % len(self.content_files)
-        style_idx = idx // len(self.content_files)
-
-        assert 0 <= content_idx < len(self.content_files)
-        assert 0 <= style_idx < len(self.style_files)
-        return self.content_files[content_idx], self.style_files[style_idx]
-
-
-class EndlessDataset(IterableDataset):
-    """
-    Wrapper for StylizationDataset which loops infinitely.
-    Usefull when training based on iterations instead of epochs
-    """
-
-    def _init_(self, *args, **kwargs):
-        self.dataset = StylizationDataset(*args, **kwargs)
-
-    def _iter_(self):
-        while True:
-            idx = random.randrange(len(self.dataset))
-
-            try:
-                yield self.dataset[idx]
-            except Exception as e:
-                files = self.dataset.files_at_index(idx)
-                warnings.warn(f'\n{str(e)}\n\tFiles: [{str(files[0])}, {str(files[1])}]')
