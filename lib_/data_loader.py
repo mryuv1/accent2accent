@@ -67,18 +67,20 @@ class DataModule(pl.LightningDataModule):
         self.train_style_files = files_in(self.tr_style_pickle_path)
         self.test_content_files = files_in(self.te_content_pickle_path)
         self.test_style_files = files_in(self.te_style_pickle_path)
+        #Generate random torch seed
+        pl.seed_everything(43)
         self.train_dataset = AccentDataset(self.train_content_files, self.train_style_files)
         self.test_dataset = AccentDataset(self.test_content_files, self.test_style_files)
 
 
     def train_dataloader(self):
-        return DataLoader(self.train_dataset, batch_size=self.batch_size)
+        return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True)
 
     def val_dataloader(self):
-        return DataLoader(self.test_dataset, batch_size=1)
+        return DataLoader(self.test_dataset, batch_size=1,shuffle=True)
 
     def test_dataloader(self):
-        return DataLoader(self.test_dataset, batch_size=1)
+        return DataLoader(self.test_dataset, batch_size=1,shuffle=True)
     def transfer_batch_to_device(self, batch, device):
         for k, v in batch.items():
             if isinstance(v, Tensor):

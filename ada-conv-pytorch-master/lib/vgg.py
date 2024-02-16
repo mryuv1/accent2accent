@@ -5,6 +5,51 @@ from torchvision import models
 from torchvision.transforms import transforms
 
 
+class ZSSROriginalNet(nn.Module):
+    def __init__(self, scale_factor, kernel_size=3, num_channels=64, num_of_layers=16):
+        super().__init__()
+        self.scale_factor = scale_factor
+        self.kernel_size = kernel_size
+        self.num_channels = num_channels
+        self.num_of_layers = num_of_layers
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        # Initial Convolutional Layer
+        self.initial_conv = nn.Conv2d(3, num_channels, kernel_size=kernel_size, padding=kernel_size // 2)
+
+        # Increase with transposed conultion by scale_factor
+        self.upsample = nn.ConvTranspose2d(num_channels, num_channels, kernel_size=scale_factor, stride=scale_factor)
+
+        # Residual Blocks
+        self.res_blocks = nn.ModuleList([
+            nn.Sequential(
+                nn.Conv2d(num_channels, num_channels, kernel_size=kernel_size, padding=kernel_size // 2),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(num_channels, num_channels, kernel_size=kernel_size, padding=kernel_size // 2)
+            )
+            for _ in range(num_of_layers)
+        ])
+
+        # Final Convolutional Layer
+        self.final_conv = nn.Conv2d(num_channels, 3, kernel_size=kernel_size, padding=kernel_size // 2)
+        self.relu = nn.ReLU(inplace=False)
+        self.to(self.device)
+
+    def forward(self, x):
+        # Initial Convolutional Layer
+        x = self.relu(self.initial_conv(x))
+
+        # Upsampling
+        x = self.upsample(x)
+
+        # Residual Blocks
+        for block in self.res_blocks:
+            x = x + block(x)
+
+        # Final Convolutional Layer
+        x = self.final_conv(x)
+
+        return x
 class VGGEncoder(nn.Module):
     def __init__(self, normalize=True, post_activation=True):
         super().__init__()
