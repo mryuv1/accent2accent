@@ -7,8 +7,8 @@ from torch import Tensor
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
-from lib import dataset
-from lib.dataset import StylizationDataset, files_in, EndlessDataset
+from lib_ import dataset
+from lib_.dataset import AccentDataset, files_in, EndlessAccentDataset
 
 
 class DataModule(pl.LightningDataModule):
@@ -39,12 +39,12 @@ class DataModule(pl.LightningDataModule):
         style_files, test_style_files = self.get_files(style, test_style, batch_size)
 
         train_transforms = self.train_transforms()
-        self.train_dataset = EndlessDataset(content_files, style_files,
+        self.train_dataset = EndlessAccentDataset(content_files, style_files,
                                             style_transform=train_transforms['style'],
                                             content_transform=train_transforms['content'])
 
         test_transforms = self.test_transforms()
-        self.test_dataset = StylizationDataset(test_content_files, test_style_files,
+        self.test_dataset = AccentDataset(test_content_files, test_style_files,
                                                style_transform=test_transforms['style'],
                                                content_transform=test_transforms['content'])
         self.batch_size = batch_size

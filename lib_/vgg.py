@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
 import torchvision.models as models
-from data_loader import DataModule
+from lib_.data_loader import DataModule
 
 # Define the VGG19 model
 class VGG19(nn.Module):
