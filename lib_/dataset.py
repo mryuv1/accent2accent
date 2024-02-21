@@ -8,7 +8,7 @@ import pickle
 from torch.utils.data import IterableDataset, Dataset
 from torchvision.transforms import ToTensor, Compose, Resize, CenterCrop
 from torchvision.utils import save_image
-
+import argparse
 #TO DELETE LATER
 from datasets import load_dataset
 from torch.utils.data import DataLoader
@@ -17,7 +17,9 @@ import math
 import numpy as np
 import librosa
 import pytorch_lightning as pl
-
+from vgg import VGGEncoder
+import os
+from sklearn.metrics import accuracy_score
 def files_in(dir):
     return list(sorted(Path(dir).glob('*')))
 
@@ -58,10 +60,61 @@ def content_transforms(min_size=None):
 
 
 class AccentHuggingBased(Dataset):
-    def __init__(self,dataset,type="train"):
+    def __init__(self,dataset,type="train",batch_size=1):
+        self.batch_size = batch_size
         self.dataset = dataset[type].select_columns(['audio', 'labels']).map(lambda e: {'audio': e['audio']['array'], 'label': e['labels'], 'sr': e['audio']['sampling_rate']})
+        #Filter all the labels that have less than 400 samples
+
+        #save the dataset to a file for later use
+       # self.dataset.save_to_disk('accent_hugging_based_dataset')
+        self.label_to_number_mapping = None
+        self.num_classes = 0
+        self._filter_labels_with_less_than_samples()
+
+    def _filter_labels_with_less_than_samples(self, min_samples=300):
+        label_counts = {}
+        for item in self.dataset:
+            label = item['label']
+            label_counts[label] = label_counts.get(label, 0) + 1
+
+        # Identify labels with less than 400 samples
+        labels_to_remove = [label for label, count in label_counts.items() if count < min_samples]
+
+        # Filter out samples associated with labels that have less than 400 samples
+        self.dataset = self.dataset.filter(lambda e: e['label'] not in labels_to_remove)
+
+
+    def _create_mapping(self):
+        # Create a mapping from a label (str) to a number between 0 to amount of labels - 1,
+        # this mapping will be always the same for the same labels
+        #Check if the mapping file already exists
+        if os.path.exists('label_to_number_mapping.pkl'):
+            with open('label_to_number_mapping.pkl', 'rb') as f:
+                self.label_to_number_mapping = pickle.load(f)
+                self.num_classes = len(self.label_to_number_mapping)
+                return
+        unique_labels = self.dataset.unique('labels')
+        #sort unique labels by alphabetical order
+        unique_labels.sort()
+        self.label_to_number_mapping = {label: idx for idx, label in enumerate(unique_labels)}
+        #save the mapping to a file for later use
+        with open('label_to_number_mapping.pkl', 'wb') as f:
+            pickle.dump(self.label_to_number_mapping, f)
+
+
+
+    def get_label_number(self, label):
+        if self.label_to_number_mapping is None:
+            self._create_mapping()
+        return self.label_to_number_mapping[label]
+
+    def _CreateMapping(self):
+        #Create a mapping from a label (str) to a number between 0 to amount of labels - 1, this mapping will be always the same for the same labels
+        self.labels = self.dataset.unique('label')
+
+
     @staticmethod
-    def _process_audio_array(audio_data, sr, segment_duration=2):
+    def _process_audio_array(audio_data, sr, segment_duration=4):
         # Calculate the total number of segments
 
         # Calculate the number of samples per segment
@@ -102,18 +155,55 @@ class AccentHuggingBased(Dataset):
             target_amplitudes.append(target_amplitude)
         return spectrograms, target_amplitudes
 
+    def _createBatch(self, sample_indices):
+        batch_audio = []
+        batch_labels = []
+        batch_sr = []
+        batch_max_amplitudes = []
+
+        for idx in sample_indices:
+            audio_data = self.dataset[idx]['audio']
+            sr = self.dataset[idx]['sr']
+
+            spectrograms, target_amplitudes = self._process_audio_array(audio_data, sr)
+
+            # Append spectrograms to the batch
+            for j in range(len(spectrograms)):
+                batch_audio.append(torch.stack([torch.tensor(spectrograms[j]) for _ in range(3)]))
+            for j in range(len(spectrograms)):
+                batch_labels.append(self.get_label_number(self.dataset[idx]['label']))
+            for j in range(len(spectrograms)):
+                batch_sr.append(sr)
+            for j in range(len(target_amplitudes)):
+                batch_max_amplitudes.append(target_amplitudes[j])
+
+        return torch.stack(batch_audio), torch.tensor(batch_labels), torch.tensor(batch_sr), torch.tensor(batch_max_amplitudes)
+
     def __len__(self):
-        return len(self.dataset)
+        return math.ceil(len(self.dataset) / self.batch_size)
 
     def __getitem__(self, idx):
-        a = self._process_audio_array(self.dataset[idx]['audio'], self.dataset[idx]['sr'])
-        return a, self.dataset[idx]['label'], self.dataset[idx]['sr']
+        start_idx = idx * self.batch_size
+        end_idx = min((idx + 1) * self.batch_size, len(self.dataset))
+
+        sample_indices = range(start_idx, end_idx)
+        batch_audio, batch_labels, batch_sr, max_amp = self._createBatch(sample_indices)
+
+        return batch_audio, batch_labels, batch_sr, max_amp
 
 
 class AccentHuggingBasedDataLoader(pl.LightningDataModule):
     def __init__(self, batch_size=32):
         self.batch_size = batch_size
+        #only 1000 items for now
         self.dataset = load_dataset("stable-speech/concatenated-accent-dataset")
+        if os.path.exists('label_to_number_mapping.pkl'):
+            with open('label_to_number_mapping.pkl', 'rb') as f:
+                self.num_classes = len(pickle.load(f))
+        else:
+            self.num_classes = 2
+
+        #self.dataset = load_dataset("stable-speech/concatenated-accent-dataset", )
 
     def modify_batch(self, batch):
         def modify_batch(self, batch):
@@ -126,7 +216,7 @@ class AccentHuggingBasedDataLoader(pl.LightningDataModule):
 
     def train_dataloader(self):
         # Use the modify_batch function to add noise to the batch
-        return DataLoader(AccentHuggingBased(self.dataset, type="train"), batch_size=self.batch_size, shuffle=True)
+        return DataLoader(AccentHuggingBased(self.dataset,batch_size=self.batch_size, type="train"), batch_size=1,shuffle=True)#, num_workers=4)
 
     def val_dataloader(self):
         return DataLoader(AccentHuggingBased(self.dataset, type="test"), batch_size=1, shuffle=True)
@@ -149,12 +239,113 @@ class AccentHuggingBasedDataLoader(pl.LightningDataModule):
     def setup(self, stage=None):
         pass
 
-#Test the dataloader
-dataloader = AccentHuggingBasedDataLoader(batch_size=4).get_dataloader()
-for batch in dataloader:
-    print(batch)
-    break
+
+#TRAIN THE MODEL
+# Define the Lightning module for training
+class MOSHIKOTrainer(pl.LightningModule):
+    def __init__(self, model, dataloader):
+        super().__init__()
+        self.model = model
+        self.dataloader = dataloader
+
+    def forward(self, x):
+        return self.model(x)
+
+    def training_step(self, batch, batch_idx):
+        x, y, sr, max_amp = batch
+        # Forward pass
+        x = x.float()
+        y = y.squeeze(0)
+        logits = self.model(x.squeeze(0))
+
+        # Compute the loss using CrossEntropyLoss
+        loss = torch.nn.CrossEntropyLoss()(logits, y)
+
+        # Compute accuracy
+        _, predicted = torch.max(logits, 1)
+        acc = accuracy_score(y.cpu().numpy(), predicted.cpu().numpy())
+
+        # Log accuracy and loss for visualization
+        self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True)
+        self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=True)
+
+        return loss
+
+    def configure_optimizers(self):
+        # Define your optimizer
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+        return optimizer
+
+    def train_dataloader(self):
+        return self.dataloader
+
+def main(args):
+    # Define data loader and current directory
+    dataloader = AccentHuggingBasedDataLoader(batch_size=args.batch_size)
+    current_directory = os.getcwd()
+
+    # Initialize model and Lightning modules
+    model = VGGEncoder(TzlilTrain=True, current_directory=current_directory, path_to_weights=args.weights_path, num_classes=dataloader.num_classes)
+    dataloader = dataloader.get_dataloader()
+    trainer = pl.Trainer(max_epochs=args.epochs)
+    moshiko_trainer = MOSHIKOTrainer(model, dataloader)
+
+    # Start training
+    trainer.fit(moshiko_trainer)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Train your model.")
+    parser.add_argument("--batch_size", type=int, default=24, help="Batch size for training")
+    parser.add_argument("--epochs", type=int, default=10, help="Number of epochs for training")
+    parser.add_argument("--weights_path", type=str, default="vgg.pth", help="Path to the weights file")
+    args = parser.parse_args()
+    main(args)
+
+
+# Test the dataloader
+#dataloader = AccentHuggingBasedDataLoader(batch_size=130).get_dataloader()
+dataloader = AccentHuggingBasedDataLoader(batch_size=24)
+current_directory = os.getcwd()
+# Initialize model and Lightning modules
+
+model = VGGEncoder(TzlilTrain=True,current_directory=current_directory, path_to_weights="vgg.pth",num_classes=dataloader.num_classes)
+dataloader = dataloader.get_dataloader()
+trainer = pl.Trainer(max_epochs=10)
+moshiko_trainer = MOSHIKOTrainer(model, dataloader)
+
+# Start training
+trainer.fit(moshiko_trainer)
 exit(1)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class AccentHuggingBased(Dataset):
     def __init__(self, content_files, style_files, content_transform=None, style_transform=None):
         self.content_files = content_files
