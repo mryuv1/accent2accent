@@ -18,10 +18,11 @@ from dataset import files_in
 import pytorch_lightning as pl
 from sklearn.model_selection import train_test_split
 from torch import Tensor
+import torch
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from dataset import AccentDataset, files_in, EndlessAccentDataset
-
+import math
 
 class DataModule(pl.LightningDataModule):
     @staticmethod
@@ -68,13 +69,21 @@ class DataModule(pl.LightningDataModule):
         self.test_content_files = files_in(self.te_content_pickle_path)
         self.test_style_files = files_in(self.te_style_pickle_path)
         #Generate random torch seed
-        pl.seed_everything(43)
+        pl.seed_everything(48)
         self.train_dataset = AccentDataset(self.train_content_files, self.train_style_files)
         self.test_dataset = AccentDataset(self.test_content_files, self.test_style_files)
 
+    def modify_batch(self, batch):
+        def modify_batch(self, batch):
+            # Remove all tensors from the batch that are all zeros or have low amplitudes
+            filtered_batch = [tensor for tensor in batch if torch.sum(tensor) != 0]
 
+            return filtered_batch
+        return batch
     def train_dataloader(self):
+        #Use the modify_batch function to add noise to the batch
         return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True)
+
 
     def val_dataloader(self):
         return DataLoader(self.test_dataset, batch_size=1,shuffle=True)
@@ -121,7 +130,6 @@ class DataModule(pl.LightningDataModule):
                 if filename.endswith('.wav'):
                     S, target_amplitude = self._process_wav_file(file_path)
                     self.content_spectrograms.append((file_path, S, target_amplitude))
-
         for directory in os.listdir(self.style_wav_dir):
             if directory.startswith('.'):
                 continue
@@ -131,19 +139,50 @@ class DataModule(pl.LightningDataModule):
                     S, target_amplitude = self._process_wav_file(file_path)
                     self.style_spectrograms.append((file_path, S, target_amplitude))
 
-    def _process_wav_file(self, wav_path):
+    def _process_wav_file(self, wav_path, segment_duration=2):
+
+        # Calculate the total number of segments
+
         # Load the audio file
         y, sr = librosa.load(wav_path)
-        target_amplitude = np.max(np.abs(y))
-        # Generate a Mel-spectrogram
-        n_fft = 2048
-        hop_length = 512
-        n_mels = 256
-        # S = librosa.feature.melspectrogram(y=y, sr=sr, n_fft=n_fft, hop_length=hop_length, n_mels=n_mels)
-        S = librosa.feature.melspectrogram(y=y, sr=sr, n_fft=n_fft, hop_length=hop_length, n_mels=n_mels, window='hann')
-        # Convert to log scale (dB)
-        S_dB = librosa.power_to_db(S, ref=np.max)
-        return (S_dB, target_amplitude)
+
+        # Calculate the number of samples per segment
+        samples_per_segment = sr * segment_duration
+
+        # Compute the total number of segments
+        num_segments = math.ceil(len(y) / samples_per_segment)
+
+        # Pad the audio to make it evenly divisible into segments
+        pad_length = num_segments * samples_per_segment - len(y)
+        y = np.pad(y, (0, pad_length), mode='constant')
+        # Initialize an empty list to store spectrograms and target amplitudes
+        spectrograms = []
+        target_amplitudes = []
+
+        # Generate a Mel-spectrogram for each segment
+        for i in range(num_segments):
+            # Extract segment from the padded audio
+            start_sample = samples_per_segment * i
+            end_sample = start_sample + samples_per_segment
+            y_segment = y[start_sample:end_sample]
+
+            # Generate Mel-spectrogram for the segment
+            n_fft = 2048
+            hop_length = 512
+            n_mels = 256
+            S = librosa.feature.melspectrogram(
+                y=y_segment, sr=sr, n_fft=n_fft, hop_length=hop_length, n_mels=n_mels, window='hann'
+            )
+            # Convert to log scale (dB)
+            S_dB = librosa.power_to_db(S, ref=np.max)
+
+            # Compute target amplitude for the segment
+            target_amplitude = np.max(np.abs(y_segment))
+
+            # Append spectrogram and target amplitude to the lists
+            spectrograms.append(S_dB)
+            target_amplitudes.append(target_amplitude)
+        return spectrograms, target_amplitudes
 
     def spectrogram_to_wav(self, spectrograms, output_dir, sr=22050):
         if not os.path.exists(output_dir):
@@ -171,9 +210,23 @@ class DataModule(pl.LightningDataModule):
         # Extract spectrograms from style_spectrograms
         self.style_spectrograms = [item[1] for item in self.style_spectrograms]
 
+    def save_matrices_to_pickle(self, data, pickle_path):
+        if not os.path.exists(os.path.dirname(pickle_path)):
+            os.makedirs(os.path.dirname(pickle_path))
+
+        for file in data:
+            matrices = file[1]
+            magnitude = file[2]
+
+            for idx, matrix in enumerate(matrices):
+                amp_data = "trgt_amp"+ str(magnitude[idx])
+                file_name = f"{os.path.basename(file[0]).split('.wav')[0]}_{idx}_{amp_data}"
+                with open(os.path.join(pickle_path, file_name), 'wb') as f:
+                    pickle.dump(matrix, f)
+
     def save_spectograms_to_pickle(self, test_path=None, test_size=5.0 / 100):
         if test_path is None:
-            print(self.content_spectrograms)
+           # print(self.content_spectrograms)
             train_content, test_content = train_test_split(self.content_spectrograms, test_size=test_size)
             train_style, test_style = train_test_split(self.style_spectrograms, test_size=test_size)
         else:
@@ -184,30 +237,12 @@ class DataModule(pl.LightningDataModule):
             # TODO ADD THE TEST FILES TO THE PICKLE
 
         # Save content_spectrograms_only to a pickle file - train
-        if not os.path.exists(os.path.dirname(self.tr_content_pickle_path)):
-            os.makedirs(os.path.dirname(self.tr_content_pickle_path))
-        for file in train_content:
-            file_name = str(os.path.basename(file[0]).split('.wav')[0])
-            with open(os.path.join(self.tr_content_pickle_path,file_name), 'wb') as f:
-                pickle.dump(file[1], f)
-        if not os.path.exists(os.path.dirname(self.tr_style_pickle_path)):
-            os.makedirs(os.path.dirname(self.tr_style_pickle_path))
-        for file in train_style:
-            file_name = str(os.path.basename(file[0]).split('.wav')[0])
-            with open(os.path.join(self.tr_style_pickle_path, file_name), 'wb') as f:
-                pickle.dump(file[1], f)
-        if not os.path.exists(os.path.dirname(self.te_content_pickle_path)):
-            os.makedirs(os.path.dirname(self.te_content_pickle_path))
-        for file in test_content:
-            file_name = str(os.path.basename(file[0]).split('.wav')[0])
-            with open(os.path.join(self.te_content_pickle_path, file_name), 'wb') as f:
-                pickle.dump(file[1], f)
-        if not os.path.exists(os.path.dirname(self.te_style_pickle_path)):
-            os.makedirs(os.path.dirname(self.te_style_pickle_path))
-        for file in test_style:
-            file_name = str(os.path.basename(file[0]).split('.wav')[0])
-            with open(os.path.join(self.te_style_pickle_path, file_name), 'wb') as f:
-                pickle.dump(file[1], f)
+        self.save_matrices_to_pickle(train_content, self.tr_content_pickle_path)
+        self.save_matrices_to_pickle(train_style, self.tr_style_pickle_path)
+        self.save_matrices_to_pickle(test_content, self.te_content_pickle_path)
+        self.save_matrices_to_pickle(test_style, self.te_style_pickle_path)
+
+
 
 
 if __name__ == "__main__":

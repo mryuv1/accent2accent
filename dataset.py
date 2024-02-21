@@ -41,6 +41,36 @@ def content_transforms(min_size=None):
         transforms.append(Resize(size=min_size))
     transforms.append(ToTensor())
     return Compose(transforms)
+class AccentHuggingBased(Dataset):
+    def __init__(self,content_files, style_files, content_transform=None, style_transform=None):
+        self.content_files = content_files
+        self.style_files = style_files
+
+        id = lambda x: x
+        self.content_transform = id if content_transform is None else content_transform
+        self.style_transform = id if style_transform is None else style_transform
+
+    def __getitem__(self, idx):
+        content_file, style_file = self.files_at_index(idx)
+
+        content_img = load(content_file)
+        style_img = load(style_file)
+
+        content_img = self.content_transform(content_img)
+        style_img = self.style_transform(style_img)
+
+        return {
+            'content': content_img,
+            'style': style_img,
+        }
+    def files_at_index(self, idx):
+        content_idx = idx % len(self.content_files)
+        style_idx = idx // len(self.content_files)
+
+        assert 0 <= content_idx < len(self.content_files)
+        assert 0 <= style_idx < len(self.style_files)
+        return self.content_files[content_idx], self.style_files[style_idx]
+
 
 class AccentDataset(Dataset):
     def __init__(self,content_files, style_files, content_transform=None, style_transform=None):

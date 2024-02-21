@@ -1,13 +1,56 @@
 import warnings
 
-from torch import nn
+from torch import nn,save, load
 from torchvision import models
 from torchvision.transforms import transforms
+import os
 
+def LoadVGG19(path_to_weights=None,current_directory=None,TzlilSuccess=False,TzlilTrain=False,num_classes=2):
+    vgg19 = models.vgg19(pretrained=False)
+    #Load Weights from the pre-trained model
+    if path_to_weights:
+        vgg19.load_state_dict(load(path_to_weights))
+    else:
+        vgg19.load_state_dict(models.vgg19(pretrained=True).state_dict())
+        #IF FAIL  do
+        # vgg19.load_state_dict(load(os.path.join(current_directory, "vgg19.pth")))
+    # Modify the first layer to accept 1 channel input
+    vgg19.features[0] = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1)
+
+    # Modify the fully connected layers
+    num_features = vgg19.classifier[0].in_features
+    if TzlilTrain:
+        vgg19.classifier = nn.Sequential(
+            nn.Linear(num_features, 4096),
+            nn.ReLU(inplace=True),
+            nn.Dropout(),
+            nn.Linear(4096, 4096),
+            nn.ReLU(inplace=True),
+            nn.Dropout(),
+            nn.Linear(4096, num_classes),  # Change num_classes to the number of output classes
+        )
+
+
+    # Load weights if provided
+    if TzlilSuccess:
+        state_dict = load(os.path.join(current_directory, "vgg19_new.pth"))
+        # Remove 'vgg19.' from keys in state_dict to match the model structure
+        state_dict = {k.replace('vgg19.', ''): v for k, v in state_dict.items()}
+        vgg19.load_state_dict(state_dict)
+        #Save the weights for backup
+        save(vgg19.state_dict(), os.path.join(current_directory, "vgg19_new_bckp.pth"))
+
+   # vgg19.load_state_dict(torch.load(os.path.join(current_directory, "vgg19_new.pth")))
+
+    return vgg19
 class VGGEncoder(nn.Module):
-    def __init__(self, normalize=True, post_activation=True):
+    def __init__(self, path_to_weights=None,current_directory=None,normalize=True, post_activation=True):
         super().__init__()
-
+        if current_directory is None:
+            current_directory = os.path.dirname(__file__)
+        if path_to_weights is None:
+            path_to_weights = os.path.join(current_directory, "vgg.pth")
+        self.vgg19 = LoadVGG19(path_to_weights, current_directory)
         if normalize:
             mean = [0.485, 0.456, 0.406]
             std = [0.229, 0.224, 0.225]
@@ -19,7 +62,7 @@ class VGGEncoder(nn.Module):
             layer_names = {'relu1_1', 'relu2_1', 'relu3_1', 'relu4_1'}
         else:
             layer_names = {'conv1_1', 'conv2_1', 'conv3_1', 'conv4_1'}
-        blocks, block_names, scale_factor, out_channels = extract_vgg_blocks(models.vgg19(pretrained=True).features,
+        blocks, block_names, scale_factor, out_channels = extract_vgg_blocks(models.vgg19(pretrained=False).features,
                                                                              layer_names)
 
         self.blocks = nn.ModuleList(blocks)
@@ -71,7 +114,7 @@ class VGGDecoder(nn.Module):
 
             self._conv(64, 64),
             nn.ReLU(),
-            self._conv(64, 3),
+            self._conv(64, 1),
         ]
         self.layers = nn.Sequential(*layers)
 
