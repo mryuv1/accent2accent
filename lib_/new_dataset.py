@@ -135,6 +135,7 @@ class AccentHuggingBased(Dataset):
             self.label_to_number_mapping = {label: idx for idx, label in enumerate(unique_labels)}
             # MAYBE CORRECT
             self.good_labels = unique_labels
+            self.num_classes = len(unique_labels)
         else:
             # Create a mapping from a label (str) to a number between 0 to amount of labels - 1,
             # this mapping will be always the same for the same labels
@@ -257,7 +258,8 @@ class AccentHuggingBased(Dataset):
 
 
 class AccentHuggingBasedDataLoader(pl.LightningDataModule):
-    def __init__(self, batch_size=32,include_India=False,include_newdataset=True):
+    def __init__(self, batch_size=32,include_India=False,include_newdataset=True, SlowRun=False):
+        self.SlowRun = SlowRun
         self.batch_size = batch_size
         #only 1000 items for now
         self.dataset = load_dataset("stable-speech/concatenated-accent-dataset")
@@ -326,13 +328,13 @@ class AccentHuggingBasedDataLoader(pl.LightningDataModule):
 
     def train_dataloader(self):
         # Use the modify_batch function to add noise to the batch
-        return DataLoader(AccentHuggingBased(self.dataset,batch_size=self.batch_size, type="train"), batch_size=1,shuffle=True)#, num_workers=4)
+        return DataLoader(AccentHuggingBased(self.dataset,batch_size=self.batch_size, type="train",SlowRun=self.SlowRun), batch_size=1,shuffle=True)#, num_workers=4)
 
     def val_dataloader(self):
-        return DataLoader(AccentHuggingBased(self.dataset, type="test"), batch_size=1, shuffle=True)
+        return DataLoader(AccentHuggingBased(self.dataset, type="test",SlowRun=self.SlowRun), batch_size=1, shuffle=True)
 
     def test_dataloader(self):
-        return DataLoader(AccentHuggingBased(self.dataset, type="test"), batch_size=1, shuffle=True)
+        return DataLoader(AccentHuggingBased(self.dataset, type="test",SlowRun=self.SlowRun), batch_size=1, shuffle=True)
 
     def get_dataloader(self):
         return self.train_dataloader()
@@ -400,7 +402,7 @@ class MOSHIKOTrainer(pl.LightningModule):
 def main(args):
     wandb.init(project="accent2accent")
     # Define data loader and current directory
-    dataloader = AccentHuggingBasedDataLoader(batch_size=args.batch_size)
+    dataloader = AccentHuggingBasedDataLoader(batch_size=args.batch_size, include_newdataset=args.big_dataset)
     current_directory = os.getcwd()
 
     # Initialize model and Lightning modules
@@ -425,31 +427,15 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train your model.")
-    parser.add_argument("--batch_size", type=int, default=24, help="Batch size for training")
+    parser.add_argument("--batch_size", type=int, default=50, help="Batch size for training")
     parser.add_argument("--epochs", type=int, default=10, help="Number of epochs for training")
     parser.add_argument("--weights_path", type=str, default="vgg.pth", help="Path to the weights file")
     parser.add_argument("--save_dir", type=str, default="NewVGGWeights", help="Directory to save weights")
+    parser.add_arguments("--big_dataset", type=bool, default=False, help="If want to include the big dataset in the dataloader")
+    parser.add_argument("--SlowModel", type=bool, default=True, help="If want to use the slow model")
     args = parser.parse_args()
     main(args)
     #TODO WHEN combine need to change the only the datasets, we need to remain the thing that save the model from weiz computer
-
-
-exit(1)
-# Test the dataloader
-#dataloader = AccentHuggingBasedDataLoader(batch_size=130).get_dataloader()
-dataloader = AccentHuggingBasedDataLoader(batch_size=50)
-current_directory = os.getcwd()
-# Initialize model and Lightning modules
-
-model = VGGEncoder(TzlilTrain=True,current_directory=current_directory, path_to_weights="vgg.pth",num_classes=dataloader.num_classes)
-dataloader = dataloader.get_dataloader()
-trainer = pl.Trainer(max_epochs=10)
-moshiko_trainer = MOSHIKOTrainer(model, dataloader)
-
-# Start training
-trainer.fit(moshiko_trainer)
-exit(1)
-
 
 
 
