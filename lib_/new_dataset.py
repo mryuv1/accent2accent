@@ -96,7 +96,6 @@ class AccentHuggingBased(Dataset):
         #                        'sr': e['audio']['sampling_rate']})
         self.dataset = dataset[0][type]
         #Perform shuffle on the dataset
-        self.dataset = self.dataset.shuffle()
         self.label_to_number_mapping = None
         self.num_classes = 0
         self.slow_run = SlowRun
@@ -104,7 +103,8 @@ class AccentHuggingBased(Dataset):
         self._create_mapping()
         self.check_if_valid_labels_exist()
         if not SlowRun:
-            self._filter_labels_with_less_than_samples()
+            self._filter_labels_not_in_good_labels()
+        self.dataset = self.dataset.shuffle()
         print("Number of classes: In Hugging face ", self.num_classes)
         print("AMount of good labels: ", len(self.good_labels))
         print("All Labels existed", self.dataset.unique('labels'))
@@ -138,7 +138,7 @@ class AccentHuggingBased(Dataset):
             with open('valid_labels.pkl', 'wb') as f:
                 pickle.dump(self.good_labels, f)
     def _filter_labels_not_in_good_labels(self):
-        self.dataset = self.dataset.filter(lambda e: e['label'] in self.good_labels)
+        self.dataset = self.dataset.filter(lambda e: self._label_map(e['labels']) in self.good_labels)
         self._create_mapping()
 
     def _filter_labels_with_less_than_samples(self, min_samples=180):
@@ -157,40 +157,55 @@ class AccentHuggingBased(Dataset):
 
 
     def _create_mapping(self):
-        if not self.slow_run:
-            unique_labels = self.dataset.unique('labels')
+        if os.path.exists('valid_labels.pkl'):
+            with open('valid_labels.pkl', 'rb') as f:
+                self.good_labels = pickle.load(f)
+                self.label_to_number_mapping = {label: idx for idx, label in enumerate(self.good_labels)}
+        else:
+            unique_labels = self.dataset.unique('label')
             print("Unique labels: ", unique_labels)
             # sort unique labels by alphabetical order
             unique_labels.sort()
-            # remove the option of "English" label
-            if "English" in unique_labels:
-                unique_labels.remove("English")
             self.label_to_number_mapping = {label: idx for idx, label in enumerate(unique_labels)}
             # MAYBE CORRECT
             self.good_labels = unique_labels
-            self.num_classes = len(unique_labels)
-        else:
-            # Create a mapping from a label (str) to a number between 0 to amount of labels - 1,
-            # this mapping will be always the same for the same labels
-            #Check if file contain the valid labels is already exists if so load it
-            if os.path.exists('valid_labels.pkl'):
-                with open('valid_labels.pkl', 'rb') as f:
-                    self.good_labels = pickle.load(f)
-                    self.num_classes = len(self.good_labels)
-                    print("Number of classes: ", self.num_classes)
-                    self.label_to_number_mapping = {label: idx for idx, label in enumerate(self.good_labels)}
-                    print("Mapping: ", self.label_to_number_mapping)
-            #Check if the mapping file already exists
-            else:
-                if os.path.exists('label_to_number_mapping.pkl'):
-                    with open('label_to_number_mapping.pkl', 'rb') as f:
-                        self.label_to_number_mapping = pickle.load(f)
-                        self.num_classes = max(len(self.label_to_number_mapping), len(self.good_labels))
-                        return
-                self.label_to_number_mapping = {label: idx for idx, label in enumerate(self.good_labels)}
-        #save the mapping to a file for later use
-        with open('label_to_number_mapping.pkl', 'wb') as f:
-            pickle.dump(self.label_to_number_mapping, f)
+        self.num_classes = len(self.good_labels)
+
+        # if not self.slow_run:
+        #     if os.path.exists('valid_labels.pkl'):
+        #         with open('valid_labels.pkl', 'rb') as f:
+        #             self.good_labels = pickle.load(f)
+        #     else:
+        #         unique_labels = self.dataset.unique('labels')
+        #     print("Unique labels: ", unique_labels)
+        #     # sort unique labels by alphabetical order
+        #     unique_labels.sort()
+        #     self.label_to_number_mapping = {label: idx for idx, label in enumerate(unique_labels)}
+        #     # MAYBE CORRECT
+        #     self.good_labels = unique_labels
+        #     self.num_classes = len(unique_labels)
+        # else:
+        #     # Create a mapping from a label (str) to a number between 0 to amount of labels - 1,
+        #     # this mapping will be always the same for the same labels
+        #     #Check if file contain the valid labels is already exists if so load it
+        #     if os.path.exists('valid_labels.pkl'):
+        #         with open('valid_labels.pkl', 'rb') as f:
+        #             self.good_labels = pickle.load(f)
+        #             self.num_classes = len(self.good_labels)
+        #             print("Number of classes: ", self.num_classes)
+        #             self.label_to_number_mapping = {label: idx for idx, label in enumerate(self.good_labels)}
+        #             print("Mapping: ", self.label_to_number_mapping)
+        #     #Check if the mapping file already exists
+        #     else:
+        #         if os.path.exists('label_to_number_mapping.pkl'):
+        #             with open('label_to_number_mapping.pkl', 'rb') as f:
+        #                 self.label_to_number_mapping = pickle.load(f)
+        #                 self.num_classes = max(len(self.label_to_number_mapping), len(self.good_labels))
+        #                 return
+        #         self.label_to_number_mapping = {label: idx for idx, label in enumerate(self.good_labels)}
+        # #save the mapping to a file for later use
+        # with open('label_to_number_mapping.pkl', 'wb') as f:
+        #     pickle.dump(self.label_to_number_mapping, f)
 
     def _label_map(self,label):
         # Define the mapping from old labels to new labels
