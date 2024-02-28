@@ -4,12 +4,14 @@ from pathlib import Path
 import sys
 import torch
 from pytorch_lightning import Trainer
-from pytorch_lightning.callbacks import LearningRateMonitor
+from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
-
+import pytorch_lightning as pl
+import os
 sys.path.append('..//lib_')
-from lib_.lightning.datamodule import DataModule
+#from lib_.lightning.datamodule import DataModule
 from lib_.lightning.lightningmodel import LightningModel
+from lib_.DataLoader import AccentHuggingBasedDataLoader
 
 import pickle
 
@@ -50,7 +52,7 @@ def parse_args():
                         help='How often a validation step is performed. '
                              'Applies the model to several fixed images and calculate the loss.')
 
-    parser = DataModule.add_argparse_args(parser)
+    parser = AccentHuggingBasedDataLoader.add_argparse_args(parser)
     parser = LightningModel.add_argparse_args(parser)
 
     parser.formatter_class = argparse.ArgumentDefaultsHelpFormatter
@@ -59,7 +61,7 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-
+    print("The arguments are", args)
     if args['checkpoint'] is None:
         max_epochs = 1
         model = LightningModel(**args)
@@ -68,18 +70,14 @@ if __name__ == '__main__':
         #   resume training from the beginning of the next epoch if resuming from a mid-epoch checkpoint.
         max_epochs = torch.load(args['checkpoint'])['epoch'] + 1
         model = LightningModel.load_from_checkpoint(checkpoint_path=args['checkpoint'])
-    datamodule = DataModule(**args)
-
+    datamodule = AccentHuggingBasedDataLoader(**args)
     logger = TensorBoardImageLogger(args['log_dir'], name='logs')
     lr_monitor = LearningRateMonitor(logging_interval='step')
-    trainer = Trainer(gpus=1,
-                      resume_from_checkpoint=args['checkpoint'],
-                      max_epochs=max_epochs,
-                      max_steps=args['iterations'],
-                      checkpoint_callback=True,
-                      val_check_interval=args['val_interval'],
-                      logger=logger,
-                      callbacks=[lr_monitor])
+    # Create save directory if it doesn't exist
+    os.makedirs(args['save_dir'], exist_ok=True)
+    checkpoint_callback = ModelCheckpoint(dirpath=args['save_dir'], filename='{epoch}-{step}',save_top_k = 3, monitor="loss", mode="min", every_n_train_steps=30)
+    trainer = pl.Trainer(max_epochs=args['epochs'], callbacks=[checkpoint_callback])
+
 
     trainer.fit(model, datamodule=datamodule)
     trainer.save_checkpoint("./model.ckpt")

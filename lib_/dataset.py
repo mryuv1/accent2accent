@@ -10,6 +10,7 @@ from torchvision.transforms import ToTensor, Compose, Resize, CenterCrop
 from torchvision.utils import save_image
 import argparse
 #TO DELETE LATER
+import wandb
 from datasets import load_dataset
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
@@ -19,6 +20,7 @@ import librosa
 import pytorch_lightning as pl
 from vgg import VGGEncoder
 import os
+from pytorch_lightning.callbacks import ModelCheckpoint
 from sklearn.metrics import accuracy_score
 def files_in(dir):
     return list(sorted(Path(dir).glob('*')))
@@ -63,26 +65,28 @@ class AccentHuggingBased(Dataset):
     def __init__(self,dataset,type="train",batch_size=1):
         self.batch_size = batch_size
         self.dataset = dataset[type].select_columns(['audio', 'labels']).map(lambda e: {'audio': e['audio']['array'], 'label': e['labels'], 'sr': e['audio']['sampling_rate']})
-        #Filter all the labels that have less than 400 samples
-
-        #save the dataset to a file for later use
-       # self.dataset.save_to_disk('accent_hugging_based_dataset')
         self.label_to_number_mapping = None
         self.num_classes = 0
-        self._filter_labels_with_less_than_samples()
+        #Filter all the labels that have less than 400 samples - LONG RUN TIME !
+        if 1==1:
+            self._filter_labels_with_less_than_samples()
 
-    def _filter_labels_with_less_than_samples(self, min_samples=300):
+
+
+    def _filter_labels_with_less_than_samples(self, min_samples=250):
         label_counts = {}
         for item in self.dataset:
             label = item['label']
-            label_counts[label] = label_counts.get(label, 0) + 1
+            if label in label_counts:
+                label_counts[label] += 1
+            else:
+                label_counts[label] = 1
 
-        # Identify labels with less than 400 samples
-        labels_to_remove = [label for label, count in label_counts.items() if count < min_samples]
+        # Identify labels with less than min_samples samples
+        labels_to_remove = {label for label, count in label_counts.items() if count < min_samples}
 
-        # Filter out samples associated with labels that have less than 400 samples
+        # Filter out samples associated with labels that have less than min_samples samples
         self.dataset = self.dataset.filter(lambda e: e['label'] not in labels_to_remove)
-
 
     def _create_mapping(self):
         # Create a mapping from a label (str) to a number between 0 to amount of labels - 1,
@@ -242,13 +246,17 @@ class AccentHuggingBasedDataLoader(pl.LightningDataModule):
 
 #TRAIN THE MODEL
 # Define the Lightning module for training
+
+
 class MOSHIKOTrainer(pl.LightningModule):
-    def __init__(self, model, dataloader):
+    def __init__(self, model, dataloader, save_path):
         super().__init__()
         self.model = model
         self.dataloader = dataloader
+        self.save_path = save_path
 
     def forward(self, x):
+
         return self.model(x)
 
     def training_step(self, batch, batch_idx):
@@ -268,8 +276,9 @@ class MOSHIKOTrainer(pl.LightningModule):
         # Log accuracy and loss for visualization
         self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True)
         self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=True)
-
+        wandb.log({"acc": acc, "loss": loss})
         return loss
+
 
     def configure_optimizers(self):
         # Define your optimizer
@@ -279,6 +288,8 @@ class MOSHIKOTrainer(pl.LightningModule):
     def train_dataloader(self):
         return self.dataloader
 
+
+
 def main(args):
     # Define data loader and current directory
     dataloader = AccentHuggingBasedDataLoader(batch_size=args.batch_size)
@@ -287,8 +298,12 @@ def main(args):
     # Initialize model and Lightning modules
     model = VGGEncoder(TzlilTrain=True, current_directory=current_directory, path_to_weights=args.weights_path, num_classes=dataloader.num_classes)
     dataloader = dataloader.get_dataloader()
-    trainer = pl.Trainer(max_epochs=args.epochs)
-    moshiko_trainer = MOSHIKOTrainer(model, dataloader)
+
+    # Define the checkpoint callback
+    checkpoint_callback = ModelCheckpoint(dirpath=args.save_path, filename='vgg_weights_{epoch}')
+
+    trainer = pl.Trainer(max_epochs=args.epochs, callbacks=[checkpoint_callback])
+    moshiko_trainer = MOSHIKOTrainer(model, dataloader, args.save_path)
 
     # Start training
     trainer.fit(moshiko_trainer)
@@ -298,26 +313,29 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=24, help="Batch size for training")
     parser.add_argument("--epochs", type=int, default=10, help="Number of epochs for training")
     parser.add_argument("--weights_path", type=str, default="vgg.pth", help="Path to the weights file")
+    parser.add_argument("--save_path", type=str, default="checkpoints/", help="Directory to save model weights")
     args = parser.parse_args()
     main(args)
+    wandb.init(project="accent2accent")
 
+    dataloader = AccentHuggingBasedDataLoader(batch_size=40)
+    current_directory = os.getcwd()
 
-# Test the dataloader
-#dataloader = AccentHuggingBasedDataLoader(batch_size=130).get_dataloader()
-dataloader = AccentHuggingBasedDataLoader(batch_size=24)
-current_directory = os.getcwd()
-# Initialize model and Lightning modules
+    # Initialize model and Lightning modules
+    model = VGGEncoder(TzlilTrain=True, current_directory=current_directory, path_to_weights="vgg.pth",
+                       num_classes=dataloader.num_classes)
+    wandb.watch(model)
+    dataloader = dataloader.get_dataloader()
 
-model = VGGEncoder(TzlilTrain=True,current_directory=current_directory, path_to_weights="vgg.pth",num_classes=dataloader.num_classes)
-dataloader = dataloader.get_dataloader()
-trainer = pl.Trainer(max_epochs=10)
-moshiko_trainer = MOSHIKOTrainer(model, dataloader)
+    # Define the checkpoint callback
+    checkpoint_callback = ModelCheckpoint(dirpath="checkpoints/", filename='vgg_weights_{epoch}')
 
-# Start training
-trainer.fit(moshiko_trainer)
-exit(1)
+    trainer = pl.Trainer(max_epochs=10, callbacks=[checkpoint_callback])
+    moshiko_trainer = MOSHIKOTrainer(model, dataloader, "checkpoints/")
 
-
+    # Start training
+    trainer.fit(moshiko_trainer)
+    exit(1)
 
 
 

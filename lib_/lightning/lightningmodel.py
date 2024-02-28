@@ -101,7 +101,7 @@ class LightningModel(pl.LightningModule):
             }
         return content_loss + style_loss
 
-    def validation_epoch_end(self, outputs):
+    def on_validation_epoch_end(self, outputs):
         if self.global_step == 0:
             return
 

@@ -1,17 +1,7 @@
 
 import random
-import warnings
-from pathlib import Path
-
-from PIL import Image
 import torch
 import pickle
-from torch.utils.data import IterableDataset, Dataset
-from torchvision.transforms import ToTensor, Compose, Resize, CenterCrop
-from torchvision.utils import save_image
-import argparse
-#TO DELETE LATER
-from functools import partial
 from datasets import load_dataset, concatenate_datasets
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
@@ -19,56 +9,14 @@ import math
 import numpy as np
 import librosa
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import ModelCheckpoint
-from vgg import VGGEncoder
 import os
-from sklearn.metrics import accuracy_score
-import wandb
-import multiprocessing
-#set the environment variable to enable MPS
-#os.environ['PYTORCH_ENABLE_MPS_FALLBACK'] = '1'
-os.environ["PYTORCH_MPS"] = "0"
-def files_in(dir):
-    return list(sorted(Path(dir).glob('*')))
+from argparse import ArgumentParser
 
-
-def load(file):
-    # Load the pickle file
-    with open(file, 'rb') as f:
-        data = pickle.load(f)
-
-    # Convert the loaded data to a torch tensor
-    tensor_data = torch.tensor(data)
-
-    return tensor_data
-
-def save(img_tensor, file):
-    if img_tensor.ndim == 4:
-        assert len(img_tensor) == 1
-
-    save_image(img_tensor, str(file))
-
-
-def style_transforms(size=256):
-    # Style images must be 256x256 for AdaConv
-    return Compose([
-        Resize(size=size),  # Resize to keep aspect ratio
-        CenterCrop(size=(size, size)),  # Center crop to square
-        ToTensor()])
-
-
-def content_transforms(min_size=None):
-    # min_size is optional as content images have no size restrictions
-    transforms = []
-    if min_size:
-        transforms.append(Resize(size=min_size))
-    transforms.append(ToTensor())
-    return Compose(transforms)
-
-
-
+from lib_.adaconv.adaconv_model import AdaConvModel
+from lib_.adain.adain_model import AdaINModel
+from lib_.loss import MomentMatchingStyleLoss, GramStyleLoss, CMDStyleLoss, MSEContentLoss
 class AccentHuggingBased(Dataset):
-    def __init__(self,dataset,type="train",batch_size=1,SlowRun=True,limit_samples=5000,enable_multiprocessing=True):
+    def __init__(self,dataset,type="train",batch_size=1,SlowRun=True,limit_samples=5000,enable_multiprocessing=True,TzlilTrain=False):
         self.batch_size = batch_size
         self.dataset = dataset[0][type]
         #Perform shuffle on the dataset
@@ -230,30 +178,66 @@ class AccentHuggingBased(Dataset):
         return spectrograms, target_amplitudes
 
     def _createBatch2(self, sample_indices):
+
         batch_audio = []
         batch_labels = []
         batch_sr = []
         batch_max_amplitudes = []
 
+        zero_audio = []
+        zero_labels = []
+        zero_sr = []
+        zero_max_amplitudes = []
+
+        label_count = {}
+        zero_count = 0
+        all_count = 0
         for idx in sample_indices:
             audio_data = self.dataset[idx]['audio']['array']
             sr = self.dataset[idx]['audio']['sampling_rate']
             label_number = self.get_label_number(self.dataset[idx]['labels'])
             if label_number == -1:
-                # Skip this sample and continue with the next one
                 continue
-            spectrograms, target_amplitudes = self._process_audio_array(audio_data, sr)
-            # Append spectrograms to the batch
-            for j in range(len(spectrograms)):
-                batch_audio.append(torch.stack([torch.tensor(spectrograms[j]) for _ in range(3)]))
-                batch_labels.append(label_number)
-                batch_sr.append(sr)
-                batch_max_amplitudes.append(target_amplitudes[j])
+            if label_number == 0:
+                spectrograms, target_amplitudes = self._process_audio_array(audio_data, sr)
+                for j in range(len(spectrograms)):
+                    zero_audio.append(torch.stack([torch.tensor(spectrograms[j]) for _ in range(3)]))
+                    zero_labels.append(label_number)
+                    zero_sr.append(sr)
+                    zero_max_amplitudes.append(target_amplitudes[j])
+                    zero_count += 1
+                    all_count += 1
+                # Count the occurrences of each label
+                label_count[label_number] = label_count.get(label_number, 0) + 1
+            else:
+                spectrograms, target_amplitudes = self._process_audio_array(audio_data, sr)
+                for j in range(len(spectrograms)):
+                    batch_audio.append(torch.stack([torch.tensor(spectrograms[j]) for _ in range(3)]))
+                    batch_labels.append(label_number)
+                    batch_sr.append(sr)
+                    batch_max_amplitudes.append(target_amplitudes[j])
+                    all_count += 1
+                # Count the occurrences of each label
+                label_count[label_number] = label_count.get(label_number, 0) + 1
+        max_size = min(len(batch_audio), len(zero_audio))
+        content = []
+        style = []
+        for i in range(max_size):
+            content.append()
 
 
+        labels_used = {}
+        for label in batch_labels:
+            if label not in labels_used:
+                labels_used[label] = 1
+            else:
+                labels_used[label] += 1
 
+        print("    Labeled Used ", labels_used)
         return torch.stack(batch_audio), torch.tensor(batch_labels), torch.tensor(batch_sr), torch.tensor(
             batch_max_amplitudes)
+
+
 
     def _createBatch(self, sample_indices):
 
@@ -331,17 +315,31 @@ class AccentHuggingBased(Dataset):
         return math.ceil(len(self.dataset) / self.batch_size)
 
     def __getitem__(self, idx):
-        start_idx = idx * self.batch_size
-        end_idx = min((idx + 1) * self.batch_size, len(self.dataset))
+        if self.TzlilTrain:
+            start_idx = idx * self.batch_size
+            end_idx = min((idx + 1) * self.batch_size, len(self.dataset))
 
-        sample_indices = range(start_idx, end_idx)
-        batch_audio, batch_labels, batch_sr, max_amp = self._createBatch(sample_indices)
-  #      return batch_audio.to("cpu"), batch_labels.to("cpu"), batch_sr.to("cpu"), max_amp.to("cpu")
-        return batch_audio, batch_labels, batch_sr, max_amp
+            sample_indices = range(start_idx, end_idx)
+            batch_audio, batch_labels, batch_sr, max_amp = self._createBatch(sample_indices)
+            return batch_audio, batch_labels, batch_sr, max_amp
+        else:
+            pass
+
 
 
 class AccentHuggingBasedDataLoader(pl.LightningDataModule):
-    def __init__(self, batch_size=32,include_India=False,include_newdataset=False, SlowRun=False):
+    @staticmethod
+    def add_argparse_args(parent_parser):
+        parser = ArgumentParser(parents=[parent_parser], add_help=False)
+        parser.add_argument("--batch_size", type=int, default=70, help="Batch size for training")
+        parser.add_argument("--epochs", type=int, default=10, help="Number of epochs for training")
+        parser.add_argument("--weights_path", type=str, default="vgg.pth", help="Path to the weights file")
+        parser.add_argument("--save_dir", type=str, default="NewVGGWeights", help="Directory to save weights")
+        parser.add_argument("--big_dataset", type=bool, default=False,
+                            help="If want to include the big dataset in the dataloader")
+        parser.add_argument("--SlowModel", type=bool, default=False, help="If want to use the slow model")
+        return parser
+    def __init__(self, batch_size=32,include_India=False,include_newdataset=False, SlowRun=False,**_):
         self.SlowRun = SlowRun
         self.batch_size = batch_size
         #only 1000 items for now
@@ -391,97 +389,8 @@ class AccentHuggingBasedDataLoader(pl.LightningDataModule):
     def prepare_data(self):
         pass
 
-    def setup(self, stage=None):
+    def prepare_data_per_node(self):
         pass
 
-
-#TRAIN THE MODEL
-class MOSHIKOTrainer(pl.LightningModule):
-    def __init__(self, model, dataloader, save_dir):
-        super().__init__()
-        self.model = model
-        self.dataloader = dataloader
-        self.save_dir = save_dir
-        self.modules
-
-
-    def forward(self, x):
-        return self.model(x)
-
-    def training_step(self, batch, batch_idx):
-        x, y, sr, max_amp = batch
-        # Move data to GPU if available
-        x = x.float()
-        y = y.long().squeeze(0)
-
-        logits = self.model(x.squeeze(0))
-        #print logits and y data type
-
-        # Compute the loss using CrossEntropyLoss
-        loss = torch.nn.functional.cross_entropy(logits, y)
-
-        # Compute accuracy
-        _, predicted = torch.max(logits, 1)
-        acc = accuracy_score(y.cpu().numpy(), predicted.cpu().numpy())
-
-        # Log accuracy and loss for visualization
-        self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True)
-        self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=True)
-        wandb.log({"acc": acc, "loss": loss})
-        return loss
-
-    def configure_optimizers(self):
-        # Define your optimizer
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3)
-        return optimizer
-
-    def train_dataloader(self):
-        return self.dataloader
-
-    def on_epoch_end(self):
-        # Save weights at the end of each epoch
-        torch.save(self.model.state_dict(), os.path.join(self.save_dir, f'epoch_{self.current_epoch}_weights.pth'))
-
-
-
-def main(args):
-    wandb.init(project="accent2accent")
-
-    # Define data loader and current directory
-    dataloader = AccentHuggingBasedDataLoader(batch_size=args.batch_size, include_newdataset=args.big_dataset, SlowRun=args.SlowModel)
-    current_directory = os.getcwd()
-
-    # Initialize model and Lightning modules
-    model = VGGEncoder(TzlilTrain=True, current_directory=current_directory, path_to_weights=args.weights_path,
-                       num_classes=dataloader.num_classes)
-
-    wandb.watch(model)
-    dataloader = dataloader.get_dataloader()
-    save_dir = args.save_dir  # Directory to save weights
-
-    # Create save directory if it doesn't exist
-    os.makedirs(save_dir, exist_ok=True)
-    checkpoint_callback = pl.callbacks.ModelCheckpoint(dirpath=save_dir, filename='{epoch}-{step}',save_top_k = 3, monitor="acc", mode="max", every_n_train_steps=30, )
-    trainer = pl.Trainer(max_epochs=args.epochs, callbacks=[checkpoint_callback])
-    moshiko_trainer = MOSHIKOTrainer(model, dataloader, save_dir)
-
-    # Start training
-    trainer.fit(moshiko_trainer)
-
-
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Train your model.")
-    parser.add_argument("--batch_size", type=int, default=70, help="Batch size for training")
-    parser.add_argument("--epochs", type=int, default=10, help="Number of epochs for training")
-    parser.add_argument("--weights_path", type=str, default="vgg.pth", help="Path to the weights file")
-    parser.add_argument("--save_dir", type=str, default="NewVGGWeights", help="Directory to save weights")
-    parser.add_argument("--big_dataset", type=bool, default=False, help="If want to include the big dataset in the dataloader")
-    parser.add_argument("--SlowModel", type=bool, default=False, help="If want to use the slow model")
-    args = parser.parse_args()
-    main(args)
-    #TODO WHEN combine need to change the only the datasets, we need to remain the thing that save the model from weiz computer
-
-
-
+    def setup(self, stage=None):
+        pass

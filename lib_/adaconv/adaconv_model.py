@@ -5,7 +5,7 @@ from torch import nn
 
 from lib_.adaconv.adaconv import AdaConv2d
 from lib_.adaconv.kernel_predictor import KernelPredictor
-from lib_.vgg import VGG19
+from lib_.vgg import VGGEncoder
 
 
 class AdaConvModel(nn.Module):
@@ -19,7 +19,7 @@ class AdaConvModel(nn.Module):
 
     def __init__(self, style_size, style_channels, kernel_size):
         super().__init__()
-        self.encoder = VGG19()
+        self.encoder = VGGEncoder(TzlilTrain=False)
 
         style_in_shape = (self.encoder.out_channels, style_size // self.encoder.scale_factor, style_size // self.encoder.scale_factor)
         style_out_shape = (style_channels, kernel_size, kernel_size)

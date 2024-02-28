@@ -90,8 +90,7 @@ class VGGEncoder(nn.Module):
 
     def forward(self, xs):
         if self.TzlilTrain:
-            print("Tzlil Train Mode")
-            return self.vgg19(xs)
+            return self.vgg19(xs.float())
         else:
             xs = self.normalize(xs)
             xs.to(torch.float32)
