@@ -87,6 +87,8 @@ if __name__ == '__main__':
     # Create save directory if it doesn't exist
     os.makedirs(args['save_dir'], exist_ok=True)
     wandb.watch(model)
+    #Move model to GPU
+    model.cuda()
     checkpoint_callback = ModelCheckpoint(dirpath=args['save_dir'], filename='{epoch}-{step}',save_top_k = 3, monitor="loss", mode="min", every_n_train_steps=30)
     trainer = pl.Trainer(max_epochs=args['epochs'], callbacks=[checkpoint_callback, lr_monitor], logger=logger, max_steps=args['iterations'])
 
