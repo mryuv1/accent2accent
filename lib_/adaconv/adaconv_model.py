@@ -2,6 +2,7 @@ from argparse import ArgumentParser
 
 import torchinfo
 from torch import nn
+import math
 
 from lib_.adaconv.adaconv import AdaConv2d
 from lib_.adaconv.kernel_predictor import KernelPredictor
@@ -20,9 +21,12 @@ class AdaConvModel(nn.Module):
     def __init__(self, style_size, style_channels, kernel_size):
         super().__init__()
         self.encoder = VGGEncoder(TzlilTrain=False)
-
+        print(style_size, self.encoder.scale_factor)
         style_in_shape = (self.encoder.out_channels, style_size // self.encoder.scale_factor, style_size // self.encoder.scale_factor)
+        #TODO CHECK - CHANGE THE SECOND DIMENSION
+        style_in_shape = (self.encoder.out_channels, style_size // self.encoder.scale_factor, 376 // self.encoder.scale_factor)
         style_out_shape = (style_channels, kernel_size, kernel_size)
+        print(style_in_shape, style_out_shape)
         self.style_encoder = GlobalStyleEncoder(in_shape=style_in_shape, out_shape=style_out_shape)
         self.decoder = AdaConvDecoder(style_channels=style_channels, kernel_size=kernel_size)
 
@@ -69,7 +73,7 @@ class AdaConvDecoder(nn.Module):
             *self._make_layers(512, 256, group_div=group_div[0], n_convs=n_convs[0]),
             *self._make_layers(256, 128, group_div=group_div[1], n_convs=n_convs[1]),
             *self._make_layers(128, 64, group_div=group_div[2], n_convs=n_convs[2]),
-            *self._make_layers(64, 3, group_div=group_div[3], n_convs=n_convs[3], final_act=False, upsample=False)])
+            *self._make_layers(64, 1, group_div=group_div[3], n_convs=n_convs[3], final_act=False, upsample=False)])
 
     def forward(self, content, w_style):
         # Checking types is a bit hacky, but it works well.
@@ -128,15 +132,15 @@ class GlobalStyleEncoder(nn.Module):
             nn.LeakyReLU(),
             nn.AvgPool2d(2, 2),
         )
-
-        in_features = self.in_shape[0] * (self.in_shape[1] // 8) * self.in_shape[2] // 8
+        in_features = self.in_shape[0] * (self.in_shape[1] // 8) * math.ceil(self.in_shape[2] // 8)
         out_features = self.out_shape[0] * self.out_shape[1] * self.out_shape[2]
         self.fc = nn.Linear(in_features, out_features)
 
     def forward(self, xs):
+        in_features = self.in_shape[0] * (self.in_shape[1] // 8) * self.in_shape[2] // 8
+        out_features = self.out_shape[0] * self.out_shape[1] * self.out_shape[2]
         ys = self.downscale(xs)
         ys = ys.reshape(len(xs), -1)
-
         w = self.fc(ys)
         w = w.reshape(len(xs), self.out_shape[0], self.out_shape[1], self.out_shape[2])
         return w

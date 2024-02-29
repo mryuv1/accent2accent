@@ -8,12 +8,22 @@ from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 import pytorch_lightning as pl
 import os
+import wandb
 sys.path.append('..//lib_')
 #from lib_.lightning.datamodule import DataModule
 from lib_.lightning.lightningmodel import LightningModel
 from lib_.DataLoader import AccentHuggingBasedDataLoader
-
 import pickle
+PC = "Macbook"
+
+if PC=="Macbook":
+    print("MPS - TZLIL WORKING")
+    import subprocess
+    # Set the environment variable
+  #  os.environ["PYTORCH_MPS_HIGH_WATERMARK_RATIO"] = "1"
+
+    # Execute your command
+   # subprocess.run(["./webui.sh", "--no-half"])
 
 class TensorBoardImageLogger(TensorBoardLogger):
     """
@@ -60,6 +70,7 @@ def parse_args():
 
 
 if __name__ == '__main__':
+    wandb.init(project="AdaCONV")
     args = parse_args()
     print("The arguments are", args)
     if args['checkpoint'] is None:
@@ -75,9 +86,9 @@ if __name__ == '__main__':
     lr_monitor = LearningRateMonitor(logging_interval='step')
     # Create save directory if it doesn't exist
     os.makedirs(args['save_dir'], exist_ok=True)
+    wandb.watch(model)
     checkpoint_callback = ModelCheckpoint(dirpath=args['save_dir'], filename='{epoch}-{step}',save_top_k = 3, monitor="loss", mode="min", every_n_train_steps=30)
-    trainer = pl.Trainer(max_epochs=args['epochs'], callbacks=[checkpoint_callback])
+    trainer = pl.Trainer(max_epochs=args['epochs'], callbacks=[checkpoint_callback, lr_monitor], logger=logger, max_steps=args['iterations'])
 
 
     trainer.fit(model, datamodule=datamodule)
-    trainer.save_checkpoint("./model.ckpt")

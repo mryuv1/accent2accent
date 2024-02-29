@@ -11,28 +11,35 @@ import librosa
 import pytorch_lightning as pl
 import os
 from argparse import ArgumentParser
-
+from sklearn.model_selection import train_test_split
 from lib_.adaconv.adaconv_model import AdaConvModel
 from lib_.adain.adain_model import AdaINModel
 from lib_.loss import MomentMatchingStyleLoss, GramStyleLoss, CMDStyleLoss, MSEContentLoss
 class AccentHuggingBased(Dataset):
-    def __init__(self,dataset,type="train",batch_size=1,SlowRun=True,limit_samples=5000,enable_multiprocessing=True,TzlilTrain=False):
+    def __init__(self,data_type="train",batch_size=2,SlowRun=True,limit_samples=5000,enable_multiprocessing=True,TzlilTrain=False):
         self.batch_size = batch_size
-        self.dataset = dataset[0][type]
-        #Perform shuffle on the dataset
+
+        # Load the dataset
+        dataset = load_dataset("NathanRoll/commonvoice_train_gender_accent_16k")["train"]
+        # Rename column 'accent' to 'labels'
+        dataset = dataset.rename_column('accent', 'labels')
+
+        # Shuffle the dataset
+        dataset = dataset.shuffle(seed=43)
+        if data_type == "train":
+            self.dataset = dataset.select(range(0,int(len(dataset)*0.92)))
+        else:
+            self.dataset = dataset.select(range(int(len(dataset)*0.92),len(dataset)))
+
         self.label_to_number_mapping = None
         self.num_classes = 0
         self.slow_run = SlowRun
+        self.TzlilTrain = TzlilTrain
         self.good_labels = []
         self._create_mapping()
         self.check_if_valid_labels_exist()
-        if not SlowRun:
+        if not SlowRun and data_type == "train":
             self._filter_labels_not_in_good_labels()
-        self.dataset = self.dataset.shuffle()
-        print("Number of classes: In Hugging face ", self.num_classes)
-        print("AMount of good labels: ", len(self.good_labels))
-        print("All Labels existed", self.dataset.unique('labels'))
-        print("Mapping: ", self.label_to_number_mapping)
 
 
 
@@ -41,28 +48,29 @@ class AccentHuggingBased(Dataset):
             lambda e: {'audio': e['audio']['array'], 'label': e['labels'], 'sr': e['audio']['sampling_rate']})
 
     def check_if_valid_labels_exist(self):
-        if not os.path.exists('valid_labels.pkl'):
+        if not os.path.exists('../lib_/valid_labels.pkl'):
             #Write all the labels of dataset to a file
             unique_labels = self.dataset.unique('label')
             #Check if the length of the unique labels is greater than 1, else raise an error
             if len(unique_labels) <= 1:
                 raise ValueError("No labels found in the dataset")
-            with open('valid_labels.pkl', 'wb') as f:
+            with open('../lib_/valid_labels.pkl', 'wb') as f:
                 pickle.dump(unique_labels, f)
 
     def _append_to_good_labels(self, label):
         if label not in self.good_labels:
             self.good_labels.append(label)
-            with open('valid_labels.pkl', 'wb') as f:
+            with open('../lib_/valid_labels.pkl', 'wb') as f:
                 pickle.dump(self.good_labels, f)
 
     def _remove_from_good_labels(self, label):
+
         if label in self.good_labels:
             self.good_labels.remove(label)
-            with open('valid_labels.pkl', 'wb') as f:
+            with open('../lib_/valid_labels.pkl', 'wb') as f:
                 pickle.dump(self.good_labels, f)
     def _filter_labels_not_in_good_labels(self):
-        self.dataset = self.dataset.filter(lambda e: self._label_map(e['labels']) in self.good_labels)
+       # self.dataset = self.dataset.filter(lambda e: self._label_map(e['labels']) in self.good_labels)
         self._create_mapping()
 
     def _filter_labels_with_less_than_samples(self, min_samples=180):
@@ -81,13 +89,12 @@ class AccentHuggingBased(Dataset):
 
 
     def _create_mapping(self):
-        if os.path.exists('valid_labels.pkl'):
-            with open('valid_labels.pkl', 'rb') as f:
+        if os.path.exists('../lib_/valid_labels.pkl'):
+            with open('../lib_/valid_labels.pkl', 'rb') as f:
                 self.good_labels = pickle.load(f)
                 self.label_to_number_mapping = {label: idx for idx, label in enumerate(self.good_labels)}
         else:
             unique_labels = self.dataset.unique('label')
-            print("Unique labels: ", unique_labels)
             # sort unique labels by alphabetical order
             unique_labels.sort()
             self.label_to_number_mapping = {label: idx for idx, label in enumerate(unique_labels)}
@@ -201,7 +208,7 @@ class AccentHuggingBased(Dataset):
             if label_number == 0:
                 spectrograms, target_amplitudes = self._process_audio_array(audio_data, sr)
                 for j in range(len(spectrograms)):
-                    zero_audio.append(torch.stack([torch.tensor(spectrograms[j]) for _ in range(3)]))
+                    zero_audio.append(torch.stack([torch.tensor(spectrograms[j]) for _ in range(1)]))
                     zero_labels.append(label_number)
                     zero_sr.append(sr)
                     zero_max_amplitudes.append(target_amplitudes[j])
@@ -212,7 +219,7 @@ class AccentHuggingBased(Dataset):
             else:
                 spectrograms, target_amplitudes = self._process_audio_array(audio_data, sr)
                 for j in range(len(spectrograms)):
-                    batch_audio.append(torch.stack([torch.tensor(spectrograms[j]) for _ in range(3)]))
+                    batch_audio.append(torch.stack([torch.tensor(spectrograms[j]) for _ in range(1)]))
                     batch_labels.append(label_number)
                     batch_sr.append(sr)
                     batch_max_amplitudes.append(target_amplitudes[j])
@@ -223,7 +230,46 @@ class AccentHuggingBased(Dataset):
         content = []
         style = []
         for i in range(max_size):
-            content.append()
+            content.append(batch_audio[i])
+            style.append(zero_audio[i])
+        while content == []:
+            #get a random index, and check if the label after get_label_number is 0, if the label is 0, then append the content len(style) times
+            idx = random.randint(0, len(self.dataset)-1)
+            audio_data = self.dataset[idx]['audio']['array']
+            sr = self.dataset[idx]['audio']['sampling_rate']
+            label_number = self.get_label_number(self.dataset[idx]['labels'])
+            if label_number != 0:
+                continue
+            spectrograms, target_amplitudes = self._process_audio_array(audio_data, sr)
+            #Now append to content len(style) times
+            for j in range(len(spectrograms)):
+                content.append(torch.stack([torch.tensor(spectrograms[j]) for _ in range(1)]))
+                batch_labels.append(label_number)
+                batch_sr.append(sr)
+                batch_max_amplitudes.append(target_amplitudes[j])
+                all_count += 1
+                label_count[label_number] = label_count.get(label_number, 0) + 1
+        while style == []:
+            #get a random index, and check if the label after get_label_number is 0, if the label is 0, then append the content len(style) times
+            idx = random.randint(0, len(self.dataset))
+            audio_data = self.dataset[idx]['audio']['array']
+            sr = self.dataset[idx]['audio']['sampling_rate']
+            label_number = self.get_label_number(self.dataset[idx]['labels'])
+            if label_number == 0 or label_number == -1:
+                continue
+            spectrograms, target_amplitudes = self._process_audio_array(audio_data, sr)
+            #Now append to content len(style) times
+            for j in range(len(spectrograms)):
+                style.append(torch.stack([torch.tensor(spectrograms[j]) for _ in range(1)]))
+                batch_labels.append(label_number)
+                batch_sr.append(sr)
+                batch_max_amplitudes.append(target_amplitudes[j])
+                all_count += 1
+                label_count[label_number] = label_count.get(label_number, 0) + 1
+
+
+        return {"content": torch.stack(content), "style": torch.stack(style)}, torch.tensor(batch_labels), torch.tensor(batch_sr), torch.tensor(
+            batch_max_amplitudes)
 
 
         labels_used = {}
@@ -233,7 +279,6 @@ class AccentHuggingBased(Dataset):
             else:
                 labels_used[label] += 1
 
-        print("    Labeled Used ", labels_used)
         return torch.stack(batch_audio), torch.tensor(batch_labels), torch.tensor(batch_sr), torch.tensor(
             batch_max_amplitudes)
 
@@ -323,7 +368,12 @@ class AccentHuggingBased(Dataset):
             batch_audio, batch_labels, batch_sr, max_amp = self._createBatch(sample_indices)
             return batch_audio, batch_labels, batch_sr, max_amp
         else:
-            pass
+            start_idx = idx * self.batch_size
+            end_idx = min((idx + 1) * self.batch_size, len(self.dataset))
+            sample_indices = range(start_idx, end_idx)
+            batch_audio, batch_labels, batch_sr, max_amp = self._createBatch2(sample_indices)
+            return batch_audio
+            return batch_audio, batch_labels, batch_sr, max_amp
 
 
 
@@ -331,7 +381,7 @@ class AccentHuggingBasedDataLoader(pl.LightningDataModule):
     @staticmethod
     def add_argparse_args(parent_parser):
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
-        parser.add_argument("--batch_size", type=int, default=70, help="Batch size for training")
+        parser.add_argument("--batch_size", type=int, default=30, help="Batch size for training")
         parser.add_argument("--epochs", type=int, default=10, help="Number of epochs for training")
         parser.add_argument("--weights_path", type=str, default="vgg.pth", help="Path to the weights file")
         parser.add_argument("--save_dir", type=str, default="NewVGGWeights", help="Directory to save weights")
@@ -340,22 +390,12 @@ class AccentHuggingBasedDataLoader(pl.LightningDataModule):
         parser.add_argument("--SlowModel", type=bool, default=False, help="If want to use the slow model")
         return parser
     def __init__(self, batch_size=32,include_India=False,include_newdataset=False, SlowRun=False,**_):
+        super().__init__()
         self.SlowRun = SlowRun
         self.batch_size = batch_size
         #only 1000 items for now
-        self.dataset = load_dataset("NathanRoll/commonvoice_train_gender_accent_16k", cache_dir=None)
-        self.dataset = self.dataset.rename_column('accent', 'labels')
-        if include_newdataset:
-            self.dataset2 = load_dataset("stable-speech/concatenated-accent-dataset")
-            #change the labels in train and test of 'accent' to 'labels'
-            self.dataset = [self.dataset, self.dataset2]
-        else:
-            self.dataset = [self.dataset]
-        if os.path.exists('valid_labels.pkl'):
-            with open('valid_labels.pkl', 'rb') as f:
-                self.num_classes = len(pickle.load(f))
-        else:
-            self.num_classes = 2
+
+
 
 
     def modify_batch(self, batch):
@@ -369,20 +409,20 @@ class AccentHuggingBasedDataLoader(pl.LightningDataModule):
 
     def train_dataloader(self):
         # Use the modify_batch function to add noise to the batch
-        return DataLoader(AccentHuggingBased(self.dataset,batch_size=self.batch_size, type="train",SlowRun=self.SlowRun), batch_size=1,shuffle=True)#, num_workers=4)
+        return DataLoader(AccentHuggingBased(batch_size=self.batch_size, data_type="train",SlowRun=self.SlowRun), batch_size=1,shuffle=True)#, num_workers=4)
 
     def val_dataloader(self):
-        return DataLoader(AccentHuggingBased(self.dataset, type="test",SlowRun=self.SlowRun), batch_size=1, shuffle=True)
+        return DataLoader(AccentHuggingBased(data_type="test",batch_size=self.batch_size,SlowRun=self.SlowRun), batch_size=1, shuffle=False)
 
     def test_dataloader(self):
-        return DataLoader(AccentHuggingBased(self.dataset, type="test",SlowRun=self.SlowRun), batch_size=1, shuffle=True)
+        return DataLoader(AccentHuggingBased(data_type="test",batch_size=self.batch_size,SlowRun=self.SlowRun), batch_size=1, shuffle=False)
 
     def get_dataloader(self):
         return self.train_dataloader()
 
-    def transfer_batch_to_device(self, batch, device):
+    def transfer_batch_to_device(self, batch, device, dataloader_idx):
         for k, v in batch.items():
-            if isinstance(v, torch.Tensor()):
+            if isinstance(v, torch.Tensor):
                 batch[k] = v.to(device)
         return batch
 
@@ -394,3 +434,6 @@ class AccentHuggingBasedDataLoader(pl.LightningDataModule):
 
     def setup(self, stage=None):
         pass
+    def _log_hyperparams(self):
+        pass
+

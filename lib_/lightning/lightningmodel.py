@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 from math import sqrt
 from statistics import mean
-
+import gc
 import pytorch_lightning as pl
 import torch
 from torch.optim import Adam
@@ -76,6 +76,8 @@ class LightningModel(pl.LightningModule):
             raise ValueError('model_type')
 
     def forward(self, content, style, return_embeddings=False):
+        print("The Content shape is ", content.shape)
+        print("The Style shape is ", style.shape)
         return self.model(content, style, return_embeddings)
 
     def training_step(self, batch, batch_idx):
@@ -101,7 +103,7 @@ class LightningModel(pl.LightningModule):
             }
         return content_loss + style_loss
 
-    def on_validation_epoch_end(self, outputs):
+    def on_validation_epoch_end(self):
         if self.global_step == 0:
             return
 
@@ -141,3 +143,12 @@ class LightningModel(pl.LightningModule):
                 "frequency": 1,
             },
         }
+    def on_train_batch_end(self,a=0,b=0,c=0,d=0, **_):
+        gc.collect()
+        torch.mps.empty_cache()
+        gc.collect()
+    def on_after_backward(self,a=0,b=0,c=0,d=0, **_):
+        gc.collect()
+        torch.mps.empty_cache()
+        gc.collect()
+
