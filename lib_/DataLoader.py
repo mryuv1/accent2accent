@@ -419,7 +419,7 @@ class AccentHuggingBasedDataLoader(pl.LightningDataModule):
 
     def train_dataloader(self):
         # Use the modify_batch function to add noise to the batch
-        return DataLoader(AccentHuggingBased(batch_size=self.batch_size, data_type="train",SlowRun=self.SlowRun), batch_size=1,shuffle=True)#, num_workers=4)
+        return DataLoader(AccentHuggingBased(batch_size=self.batch_size, data_type="train",SlowRun=self.SlowRun), batch_size=1,shuffle=True)
 
     def val_dataloader(self):
         return DataLoader(AccentHuggingBased(data_type="test",batch_size=self.batch_size,SlowRun=self.SlowRun), batch_size=1, shuffle=False)

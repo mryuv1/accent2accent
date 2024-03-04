@@ -166,7 +166,7 @@ class GAN(pl.LightningModule):
                   loss_of_folling_descriminator)
 
         self.log("g_loss", g_loss, prog_bar=True)
-        wandb.log({"Generator Loss": g_loss})
+
 
 
         # Backward pass and optimization for generator
@@ -183,8 +183,6 @@ class GAN(pl.LightningModule):
         wandb.log({"Fake Loss": fake_loss})
         d_loss = (real_loss + fake_loss) / 2
         self.log("d_loss", d_loss, prog_bar=True)
-        wandb.log({"Discriminator Loss": d_loss})
-
         #Put both Descriminator and generator loss in one wandb graph and give them legend and title accordinly
         wandb.log({"Generator Loss": g_loss, "Discriminator Loss": d_loss})
 
