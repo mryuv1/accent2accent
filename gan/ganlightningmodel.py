@@ -34,21 +34,21 @@ class GAN(pl.LightningModule):
 
         # Losses
         # mm = Moment Matching, gram = Gram matrix based, cmd = Central Moment Discrepancy
-        parser.add_argument('--style-loss', type=str, default='mm', choices=['mm', 'gram', 'cmd'])
-        parser.add_argument('--style-weight', type=float, default=5.0)
-        parser.add_argument('--content-loss', type=str, default='mse', choices=['mse'])
-        parser.add_argument('--content-weight', type=float, default=1.0)
-        parser.add_argument('--width-output', type=int, default=376)
-        parser.add_argument('--height-output', type=int, default=256)
-        parser.add_argument('--num-channels', type=int, default=1)
-        parser.add_argument('--alpha', type=float, default=1.0)
-        parser.add_argument('--fm-weight', type=float, default=1.0)
-        parser.add_arguments('--AdversionalLossWeight', type=float, default=0.3)
+        parser.add_argument('--style-loss', type=str, default='mm', choices=['mm', 'gram', 'cmd'], help="The style loss")
+        parser.add_argument('--style-weight', type=float, default=5.0, help="The weight of the style loss")
+        parser.add_argument('--content-loss', type=str, default='mse', choices=['mse'], help="The content loss")
+        parser.add_argument('--content-weight', type=float, default=1.0, help="The weight of the content loss")
+        parser.add_argument('--width-output', type=int, default=376, help="The width of the output image")
+        parser.add_argument('--height-output', type=int, default=256, help="The height of the output image")
+        parser.add_argument('--num-channels', type=int, default=1, help="The number of channels in the input image")
+        parser.add_argument('--alpha', type=float, default=1.0, help="The alpha parameter for AdaIN")
+        parser.add_argument('--fm-weight', type=float, default=1.0, help="The weight of the feature matching loss")
+        parser.add_argument('--AdversionalLossWeight', type=float, default=0.5, help="The weight of the adversarial loss")
 
         # Optimizer
-        parser.add_argument('--lr', type=float, default=0.0001)
-        parser.add_argument('--b1', type=float, default=0.5)
-        parser.add_argument('--b2', type=float, default=0.999)
+        parser.add_argument('--lr', type=float, default=0.0001, help="The learning rate")
+        parser.add_argument('--b1', type=float, default=0.5, help="The beta1 parameter for Adam")
+        parser.add_argument('--b2', type=float, default=0.999, help="The beta2 parameter for Adam")
         return parser
 
     def __init__(self,
@@ -146,15 +146,25 @@ class GAN(pl.LightningModule):
         self.log("Generator Content Loss", content_loss, prog_bar=True)
         g_loss = content_loss + style_loss
         wandb.log({"Content Loss": content_loss, "Style Loss": style_loss})
-        # Feature matching loss
-        real_features = self.discriminator.conv_layers(inputs)
-        fake_features = self.discriminator.conv_layers(self.generated_imgs)
-        fm_loss = F.mse_loss(fake_features, real_features.detach())  # Using MSE loss for feature matching
-        #Add the BCE between the generated images as they were real
-        loss_of_folling_descriminator =  self.hparams.AdversionalLossWeight * self.adversarial_loss(self.discriminator(self.generated_imgs), torch.ones(inputs.size(0), 1).type_as(inputs))
-        print("The loss of the Fooling descriminator is ", loss_of_folling_descriminator)
-        print("Feature matching loss is ", fm_loss, "The g loss is", g_loss, "The content loss is ", content_loss, "The style loss is ", style_loss)
-        g_loss += fm_loss * self.hparams.fm_weight
+        if 1==0:
+            # Feature matching loss
+            real_features = self.discriminator.conv_layers(inputs)
+            fake_features = self.discriminator.conv_layers(self.generated_imgs)
+            fm_loss = F.mse_loss(fake_features,real_features.detach())  # Using MSE loss for feature matching - maybe use the style loss?
+            #We want to add the loss of the features matching between the generated images and the real images
+            g_loss += fm_loss * self.hparams.fm_weight
+            print("Feature matching loss is ", fm_loss, "The g loss is", g_loss, "The content loss is ", content_loss,
+                  "The style loss is ", style_loss)
+        else:
+            # Calculate the BCE between the generated images as they were real
+            loss_of_folling_descriminator = self.hparams.AdversionalLossWeight * self.adversarial_loss(
+                self.discriminator(self.generated_imgs), torch.ones(inputs.size(0), 1).type_as(inputs))
+            # loss of the descriminator being fooled by the generated images
+            g_loss += loss_of_folling_descriminator
+            print("The g loss is", g_loss, "The content loss is ", content_loss,
+                  "The style loss is ", style_loss, "The loss of the Fooling descriminator is ",
+                  loss_of_folling_descriminator)
+
         self.log("g_loss", g_loss, prog_bar=True)
         wandb.log({"Generator Loss": g_loss})
 
