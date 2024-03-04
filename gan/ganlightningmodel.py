@@ -35,7 +35,7 @@ class GAN(pl.LightningModule):
         # Losses
         # mm = Moment Matching, gram = Gram matrix based, cmd = Central Moment Discrepancy
         parser.add_argument('--style-loss', type=str, default='mm', choices=['mm', 'gram', 'cmd'])
-        parser.add_argument('--style-weight', type=float, default=10.0)
+        parser.add_argument('--style-weight', type=float, default=5.0)
         parser.add_argument('--content-loss', type=str, default='mse', choices=['mse'])
         parser.add_argument('--content-weight', type=float, default=1.0)
         parser.add_argument('--width-output', type=int, default=376)
@@ -43,6 +43,7 @@ class GAN(pl.LightningModule):
         parser.add_argument('--num-channels', type=int, default=1)
         parser.add_argument('--alpha', type=float, default=1.0)
         parser.add_argument('--fm-weight', type=float, default=1.0)
+        parser.add_arguments('--AdversionalLossWeight', type=float, default=0.3)
 
         # Optimizer
         parser.add_argument('--lr', type=float, default=0.0001)
@@ -69,23 +70,7 @@ class GAN(pl.LightningModule):
 
         self.generator = AdaConvModel(style_size, style_channels, kernel_size)
         self.discriminator = Discriminator(input_shape=data_shape)
-        #Check If the arguments PreTrainAdaConv=True, than if it is true, i want you to find in the directory NewVGGWeights , for the DiscriminatorWeights and for the GneeratorWeights the one with the highest index, and load their weights
-        if PreTrainAdaConv:
-            #List all the files in the directory
-            files = os.listdir("NewVGGWeights")
-            #Filter the files that are the weights of the generator
-            generator_files = [file for file in files if "GeneratorWeights" in file]
-            #Filter the files that are the weights of the discriminator
-            discriminator_files = [file for file in files if "DiscriminatorWeights" in file]
-            #Sort the files
-            generator_files.sort()
-            discriminator_files.sort()
-            #Load the weights
-            if len(generator_files) > 0:
-                self.generator.load_state_dict(torch.load(os.path.join("NewVGGWeights", generator_files[-1])))
-            if len(discriminator_files) > 0:
-                self.discriminator.load_state_dict(torch.load(os.path.join("NewVGGWeights", discriminator_files[-1])))
-            print("The generator weights are", generator_files[-1], "The discriminator weights are", discriminator_files[-1])
+
 
         # Style loss
         if style_loss == 'mm':
@@ -103,13 +88,6 @@ class GAN(pl.LightningModule):
         else:
             raise ValueError('content_loss')
 
-        # Model type
-        if model_type == 'adain':
-            self.generator = AdaINModel(alpha)
-        elif model_type == 'adaconv':
-            self.generator = AdaConvModel(style_size, style_channels, kernel_size)
-        else:
-            raise ValueError('model_type')
 
         # Content loss
         if content_loss == 'mse':
@@ -125,11 +103,28 @@ class GAN(pl.LightningModule):
         else:
             raise ValueError('model_type')
 
+        self.init_weights()
     def forward(self, content, style):
         #Define the forward pass for the gan
         return self.generator(content, style)
 
-
+    def init_weights(self):
+        # List all the files in the directory
+        files = os.listdir("NewVGGWeights")
+        # Filter the files that are the weights of the generator
+        generator_files = [file for file in files if "GeneratorWeights" in file]
+        # Filter the files that are the weights of the discriminator
+        discriminator_files = [file for file in files if "DiscriminatorWeights" in file]
+        # Sort the files by the int after - in the file name
+        generator_files.sort(key=lambda x: int(x.split("-")[1].split(".")[0]))
+        discriminator_files.sort(key=lambda x: int(x.split("-")[1].split(".")[0]))
+        # Load the weights
+        if len(generator_files) > 0:
+            self.generator.load_state_dict(torch.load(os.path.join("NewVGGWeights", generator_files[-1])))
+        if len(discriminator_files) > 0:
+            self.discriminator.load_state_dict(torch.load(os.path.join("NewVGGWeights", discriminator_files[-1])))
+        print("The generator weights are", generator_files[-1], "The discriminator weights are",
+              discriminator_files[-1])
 
     def adversarial_loss(self, y_hat, y):
         return F.binary_cross_entropy(y_hat, y)
@@ -152,14 +147,14 @@ class GAN(pl.LightningModule):
         g_loss = content_loss + style_loss
         wandb.log({"Content Loss": content_loss, "Style Loss": style_loss})
         # Feature matching loss
-        if self.global_step > 100:
-            real_features = self.discriminator.conv_layers(styles)
-            fake_features = self.discriminator.conv_layers(self.generated_imgs)
-            fm_loss = F.mse_loss(fake_features, real_features.detach())  # Using MSE loss for feature matching
-            print("Feature matching loss is ", fm_loss, "The g loss is", g_loss, "The content loss is ", content_loss, "The style loss is ", style_loss)
-            g_loss += fm_loss * self.hparams.fm_weight
-        else:
-            print("The content loss is ", content_loss, "The style loss is ", style_loss)
+        real_features = self.discriminator.conv_layers(inputs)
+        fake_features = self.discriminator.conv_layers(self.generated_imgs)
+        fm_loss = F.mse_loss(fake_features, real_features.detach())  # Using MSE loss for feature matching
+        #Add the BCE between the generated images as they were real
+        loss_of_folling_descriminator =  self.hparams.AdversionalLossWeight * self.adversarial_loss(self.discriminator(self.generated_imgs), torch.ones(inputs.size(0), 1).type_as(inputs))
+        print("The loss of the Fooling descriminator is ", loss_of_folling_descriminator)
+        print("Feature matching loss is ", fm_loss, "The g loss is", g_loss, "The content loss is ", content_loss, "The style loss is ", style_loss)
+        g_loss += fm_loss * self.hparams.fm_weight
         self.log("g_loss", g_loss, prog_bar=True)
         wandb.log({"Generator Loss": g_loss})
 
@@ -167,39 +162,24 @@ class GAN(pl.LightningModule):
         # Backward pass and optimization for generator
         self.manual_backward(g_loss)
         optimizer_g.step()
-        if self.global_step > 100:
-            # Train the discriminator
-            optimizer_d.zero_grad()
+        # Train the discriminator
+        optimizer_d.zero_grad()
 
-            valid = torch.ones(inputs.size(0), 1).type_as(inputs)
-            real_loss = self.adversarial_loss(self.discriminator(styles), valid)
+        valid = torch.ones(inputs.size(0), 1).type_as(inputs)
+        real_loss = self.adversarial_loss(self.discriminator(styles), valid)
 
-            fake = torch.zeros(inputs.size(0), 1).type_as(inputs)
-            fake_loss = self.adversarial_loss(self.discriminator(self.generated_imgs.detach()), fake)
-            wandb.log({"Fake Loss": fake_loss})
-            d_loss = (real_loss + fake_loss) / 2
-            self.log("d_loss", d_loss, prog_bar=True)
-            wandb.log({"Discriminator Loss": d_loss})
+        fake = torch.zeros(inputs.size(0), 1).type_as(inputs)
+        fake_loss = self.adversarial_loss(self.discriminator(self.generated_imgs.detach()), fake)
+        wandb.log({"Fake Loss": fake_loss})
+        d_loss = (real_loss + fake_loss) / 2
+        self.log("d_loss", d_loss, prog_bar=True)
+        wandb.log({"Discriminator Loss": d_loss})
 
-            # Backward pass and optimization for discriminator
-            self.manual_backward(d_loss)
-            optimizer_d.step()
-        else:
-            d_loss = 0
+        # Backward pass and optimization for discriminator
+        self.manual_backward(d_loss)
+        optimizer_d.step()
 
         return {"g_loss": g_loss, "d_loss": d_loss}
-
-    def generator_loss(self, embeddings):
-        # Content
-        content_loss = self.content_loss(embeddings['content'][-1], embeddings['output'][-1])
-
-        # Style
-        style_loss = []
-        for (style_features, output_features) in zip(embeddings['style'], embeddings['output']):
-            style_loss.append(self.style_loss(style_features, output_features))
-        style_loss = sum(style_loss)
-
-        return self.hparams.content_weight * content_loss, self.hparams.style_weight * style_loss
 
     def configure_optimizers(self):
         lr = self.hparams.lr
@@ -218,7 +198,7 @@ class GAN(pl.LightningModule):
         style_loss = []
         for (style_features, output_features) in zip(embeddings['style'], embeddings['output']):
             style_loss.append(self.style_loss(style_features, output_features))
-        style_loss = sum(style_loss)
+        style_loss = sum(style_loss)/len(style_loss)
 
         return self.hparams.content_weight * content_loss, self.hparams.style_weight * style_loss
     def on_train_batch_end(self, a=0,b=0,c=0,d=0, **_):
@@ -227,23 +207,4 @@ class GAN(pl.LightningModule):
             current_dir = os.getcwd()
             torch.save(self.generator.state_dict(), os.path.join(current_dir, "NewVGGWeights", f'GeneratorWeights-{self.global_step}.pth'))
             torch.save(self.discriminator.state_dict(), os.path.join(current_dir, "NewVGGWeights", f'DiscriminatorWeights-{self.global_step}.pth'))
-
-    #
-    # def configure_optimizers(self):
-    #     lr = self.hparams.lr
-    #     b1 = self.hparams.b1
-    #     b2 = self.hparams.b2
-    #
-    #     opt_g = torch.optim.Adam(self.generator.parameters(), lr=lr, betas=(b1, b2))
-    #     opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=lr, betas=(b1, b2))
-    #     return [opt_g, opt_d], []
-    #
-    # def on_validation_epoch_end(self):
-    #     z = self.validation_z.type_as(self.generator.model[0].weight)
-    #
-    #     # log sampled images
-    #     sample_imgs = self(z)
-    #     grid = torchvision.utils.make_grid(sample_imgs)
-    #     self.logger.experiment.add_image("generated_images", grid, self.current_epoch)
-
 
