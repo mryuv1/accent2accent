@@ -25,7 +25,7 @@ class AccentHuggingBased(Dataset):
         dataset = dataset.rename_column('accent', 'labels')
 
         # Shuffle the dataset
-        dataset = dataset.shuffle(seed=43)
+        dataset = dataset.shuffle(seed=38)
         if data_type == "train":
             self.dataset = dataset.select(range(0,int(len(dataset)*0.92)))
         else:
@@ -143,8 +143,17 @@ class AccentHuggingBased(Dataset):
 
     @staticmethod
     def _process_audio_array(audio_data, sr, segment_duration=4):
-        # Calculate the total number of segments
+        """
+           Process the input audio data into spectrograms and target amplitudes.
 
+           Args:
+               audio_data (np.ndarray): Input audio data.
+               sr (int): Sample rate of the audio data.
+               segment_duration (float): Duration of each segment in seconds. Default is 4.
+
+           Returns:
+               tuple: A tuple containing a list of spectrograms and a list of target amplitudes.
+           """
         # Calculate the number of samples per segment
         samples_per_segment = sr * segment_duration
 
@@ -183,6 +192,8 @@ class AccentHuggingBased(Dataset):
             spectrograms.append(S_dB)
             target_amplitudes.append(target_amplitude)
         return spectrograms, target_amplitudes
+
+
 
     def _createBatch2(self, sample_indices):
 
@@ -232,7 +243,9 @@ class AccentHuggingBased(Dataset):
         for i in range(max_size):
             content.append(batch_audio[i])
             style.append(zero_audio[i])
+        batch_labels += zero_labels
         while content == []:
+            print("PROBLEM - CONTENT IS 0 , need to check maybe the labels are the same")
             #get a random index, and check if the label after get_label_number is 0, if the label is 0, then append the content len(style) times
             idx = random.randint(0, len(self.dataset)-1)
             audio_data = self.dataset[idx]['audio']['array']
@@ -250,6 +263,7 @@ class AccentHuggingBased(Dataset):
                 all_count += 1
                 label_count[label_number] = label_count.get(label_number, 0) + 1
         while style == []:
+            print("PROBLEM - STYLE IS 0 , need to check maybe the labels are the same")
             #get a random index, and check if the label after get_label_number is 0, if the label is 0, then append the content len(style) times
             idx = random.randint(0, len(self.dataset))
             audio_data = self.dataset[idx]['audio']['array']
@@ -266,19 +280,15 @@ class AccentHuggingBased(Dataset):
                 batch_max_amplitudes.append(target_amplitudes[j])
                 all_count += 1
                 label_count[label_number] = label_count.get(label_number, 0) + 1
-
-
-        return {"content": torch.stack(content), "style": torch.stack(style)}, torch.tensor(batch_labels), torch.tensor(batch_sr), torch.tensor(
-            batch_max_amplitudes)
-
-
         labels_used = {}
         for label in batch_labels:
             if label not in labels_used:
                 labels_used[label] = 1
             else:
                 labels_used[label] += 1
-
+        print("    Labeled Used ", labels_used)
+        return {"content": torch.stack(content), "style": torch.stack(style)}, torch.tensor(batch_labels), torch.tensor(batch_sr), torch.tensor(
+            batch_max_amplitudes)
         return torch.stack(batch_audio), torch.tensor(batch_labels), torch.tensor(batch_sr), torch.tensor(
             batch_max_amplitudes)
 
@@ -381,7 +391,7 @@ class AccentHuggingBasedDataLoader(pl.LightningDataModule):
     @staticmethod
     def add_argparse_args(parent_parser):
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
-        parser.add_argument("--batch_size", type=int, default=30, help="Batch size for training")
+        parser.add_argument("--batch_size", type=int, default=45, help="Batch size for training")
         parser.add_argument("--epochs", type=int, default=10, help="Number of epochs for training")
         parser.add_argument("--weights_path", type=str, default="vgg.pth", help="Path to the weights file")
         parser.add_argument("--save_dir", type=str, default="NewVGGWeights", help="Directory to save weights")
@@ -436,4 +446,59 @@ class AccentHuggingBasedDataLoader(pl.LightningDataModule):
         pass
     def _log_hyperparams(self):
         pass
+
+    def _spectogram_to_audio(self, spectrogram, sr, target_amplitude):
+        """
+        Convert a spectrogram back to audio.
+
+        Args:
+            spectrogram (np.ndarray): Input spectrogram.
+            sr (int): Sample rate of the audio.
+            target_amplitude (float): Target amplitude of the audio.
+
+        Returns:
+            np.ndarray: The reconstructed audio waveform.
+        """
+        # Convert the Mel-spectrogram back to linear scale
+        S = librosa.db_to_power(spectrogram, ref=np.max)
+
+        # Invert the Mel-spectrogram to obtain audio waveform
+        audio_segment = librosa.feature.inverse.mel_to_audio(S, sr=sr, n_fft=2048, hop_length=512, win_length=2048,
+                                                             window='hann')
+
+        # Normalize the audio segment to match the target amplitude
+        audio_segment *= target_amplitude / np.max(np.abs(audio_segment))
+
+        return audio_segment
+
+    def process_and_concat_audio(self, spectrograms_list, sr_list, max_amplitudes_list, segment_duration=4):
+        """
+        Process a list of spectrograms into audio and concatenate them.
+
+        Args:
+            spectrograms_list (list): List of input spectrograms.
+            sr_list (list): List of sample rates corresponding to the input spectrograms.
+            max_amplitudes_list (list): List of max amplitudes corresponding to the input spectrograms.
+            segment_duration (float): Duration of each segment in seconds. Default is 4.
+
+        Returns:
+            tuple: A tuple containing the concatenated audio waveform and the sample rate.
+        """
+        concatenated_audio = np.array([])
+        for spectrograms, sr, max_amplitudes in zip(spectrograms_list, sr_list, max_amplitudes_list):
+            for spectrogram, max_amplitude in zip(spectrograms, max_amplitudes):
+                audio_segment = self._spectrogram_to_audio(spectrogram, sr, max_amplitude)
+                concatenated_audio = np.append(concatenated_audio, audio_segment)
+        return concatenated_audio, sr  # Return the concatenated audio and sample rate
+
+    def _audio_to_wav(self, audio, sr, path):
+        """
+        Save the input audio to a .wav file.
+
+        Args:
+            audio (np.ndarray): Input audio waveform.
+            sr (int): Sample rate of the audio.
+            path (str): Path to save the .wav file.
+        """
+        librosa.output.write_wav(path, audio, sr)
 
