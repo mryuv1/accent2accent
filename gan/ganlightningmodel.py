@@ -103,7 +103,7 @@ class GAN(pl.LightningModule):
         else:
             raise ValueError('model_type')
 
-        self.init_weights()
+      #  self.init_weights()
     def forward(self, content, style):
         #Define the forward pass for the gan
         return self.generator(content, style)
@@ -158,11 +158,11 @@ class GAN(pl.LightningModule):
         else:
             # Calculate the BCE between the generated images as they were real
             loss_of_folling_descriminator = self.hparams.AdversionalLossWeight * self.adversarial_loss(
-                self.discriminator(self.generated_imgs), torch.ones(inputs.size(0), 1).type_as(inputs))
+                self.discriminator(self.generated_imgs.detach()), torch.ones(inputs.size(0), 1).type_as(inputs))
             # loss of the descriminator being fooled by the generated images
             g_loss += loss_of_folling_descriminator
-            print("The g loss is", g_loss, "The content loss is ", content_loss,
-                  "The style loss is ", style_loss, "The loss of the Fooling descriminator is ",
+            print("g loss:", g_loss, "content loss:", content_loss,
+                  "style loss:", style_loss, "Fooling descriminator:",
                   loss_of_folling_descriminator)
 
         self.log("g_loss", g_loss, prog_bar=True)
@@ -184,6 +184,9 @@ class GAN(pl.LightningModule):
         d_loss = (real_loss + fake_loss) / 2
         self.log("d_loss", d_loss, prog_bar=True)
         wandb.log({"Discriminator Loss": d_loss})
+
+        #Put both Descriminator and generator loss in one wandb graph and give them legend and title accordinly
+        wandb.log({"Generator Loss": g_loss, "Discriminator Loss": d_loss})
 
         # Backward pass and optimization for discriminator
         self.manual_backward(d_loss)
@@ -212,9 +215,40 @@ class GAN(pl.LightningModule):
 
         return self.hparams.content_weight * content_loss, self.hparams.style_weight * style_loss
     def on_train_batch_end(self, a=0,b=0,c=0,d=0, **_):
-        if self.global_step % 1000 == 0:
-            #Save the weights for the generator and the discriminator
-            current_dir = os.getcwd()
-            torch.save(self.generator.state_dict(), os.path.join(current_dir, "NewVGGWeights", f'GeneratorWeights-{self.global_step}.pth'))
-            torch.save(self.discriminator.state_dict(), os.path.join(current_dir, "NewVGGWeights", f'DiscriminatorWeights-{self.global_step}.pth'))
+        #Check if cuda is available
+        if torch.cuda.is_available():
+            #Clear the cache
+            torch.cuda.empty_cache()
+        #Collect the garbage
+            gc.collect()
+            if self.global_step % 1500 == 0:
+                #Save the weights for the generator and the discriminator
+                current_dir = os.getcwd()
+                torch.save(self.generator.state_dict(), os.path.join(current_dir, "NewVGGWeights", f'GeneratorWeights-{self.global_step}.pth'))
+                torch.save(self.discriminator.state_dict(), os.path.join(current_dir, "NewVGGWeights", f'DiscriminatorWeights-{self.global_step}.pth'))
+        else:
+            if self.global_step % 100 == 0:
+                # Save the weights for the generator and the discriminator
+                current_dir = os.getcwd()
+                torch.save(self.generator.state_dict(),
+                           os.path.join(current_dir, "NewVGGWeights", f'GeneratorWeights-{self.global_step}.pth'))
+                torch.save(self.discriminator.state_dict(),
+                           os.path.join(current_dir, "NewVGGWeights", f'DiscriminatorWeights-{self.global_step}.pth'))
 
+    def maintain_3_weights(self):
+        # List all the files in the directory
+        files = os.listdir("NewVGGWeights")
+        # Filter the files that are the weights of the generator
+        generator_files = [file for file in files if "GeneratorWeights" in file]
+        # Filter the files that are the weights of the discriminator
+        discriminator_files = [file for file in files if "DiscriminatorWeights" in file]
+        # Sort the files by the int after - in the file name
+        generator_files.sort(key=lambda x: int(x.split("-")[1].split(".")[0]))
+        discriminator_files.sort(key=lambda x: int(x.split("-")[1].split(".")[0]))
+        # Load the weights
+        if len(generator_files) > 3:
+            os.remove(os.path.join("NewVGGWeights", generator_files[0]))
+        if len(discriminator_files) > 3:
+            os.remove(os.path.join("NewVGGWeights", discriminator_files[0]))
+        print("The generator weights are", generator_files[-1], "The discriminator weights are",
+              discriminator_files[-1])

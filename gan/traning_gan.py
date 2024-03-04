@@ -10,13 +10,15 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.loggers import TensorBoardLogger
 sys.path.append('..//lib_')
 from lib_.data_loader import DataModule
-from ganlightningmodel import GAN
 #from lib_.lightning.datamodule import DataModule
 from ganlightningmodel import GAN
 import os
 from lib_.DataLoader import AccentHuggingBasedDataLoader
 import wandb
 import pickle
+import os
+os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
+from fastai.vision.all import *
 class TensorBoardImageLogger(TensorBoardLogger):
     """
     Wrapper for TensorBoardLogger which logs images to disk,
@@ -61,9 +63,9 @@ def parse_args():
 
 
 if __name__ == '__main__':
-
     args = parse_args()
     wandb.init(project="AdaCONV")
+    checkPoint = os.path.join("NewVGGWeights", "CHECKPOINT-step=160.ckpt")
     if args['checkpoint'] is None:
         max_epochs = 1
         model = GAN(**args)
@@ -73,6 +75,7 @@ if __name__ == '__main__':
         max_epochs = torch.load(args['checkpoint'])['epoch'] + 1
         model = GAN.load_from_checkpoint(checkpoint_path=args['checkpoint'])
 
+    model = GAN.load_from_checkpoint(checkPoint)
     logger = TensorBoardImageLogger(args['log_dir'], name='logs')
     #datamodule = DataModule(**args)
     datamodule = AccentHuggingBasedDataLoader(**args)
@@ -81,9 +84,10 @@ if __name__ == '__main__':
     args = parse_args()
 
     lr_monitor = LearningRateMonitor(logging_interval='step')
-    checkpoint_callback = ModelCheckpoint(dirpath=args['save_dir'], filename='CHECKPOINT-{step}',save_top_k = 2, monitor="Generator Style Loss", mode="min", every_n_train_steps=80)
+    checkpoint_callback = ModelCheckpoint(dirpath=args['save_dir'], filename='CHECKPOINT-{step}',save_top_k = 2, monitor="g_loss", mode="min", every_n_train_steps=80)
     wandb.watch(model)
-    trainer = pl.Trainer(max_epochs=args['epochs'], callbacks=[checkpoint_callback, lr_monitor], logger=logger, max_steps=args['iterations'],accelerator="cpu")
+    trainer = pl.Trainer(max_epochs=args['epochs'], callbacks=[checkpoint_callback, lr_monitor], logger=logger, max_steps=args['iterations'], accelerator="cpu")
+                         #accelerator="cpu")
 
 
     trainer.fit(model, datamodule=datamodule)
