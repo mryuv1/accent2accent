@@ -20,7 +20,7 @@ class AccentHuggingBased(Dataset):
         self.batch_size = batch_size
 
         # Load the dataset
-        dataset = load_dataset("NathanRoll/commonvoice_train_gender_accent_16k")["train"]
+        dataset = load_dataset("NathanRoll/commonvoice_train_gender_accent_16k", split="train[:75%]")
         # Rename column 'accent' to 'labels'
         dataset = dataset.rename_column('accent', 'labels')
 
@@ -419,7 +419,7 @@ class AccentHuggingBasedDataLoader(pl.LightningDataModule):
 
     def train_dataloader(self):
         # Use the modify_batch function to add noise to the batch
-        return DataLoader(AccentHuggingBased(batch_size=self.batch_size, data_type="train",SlowRun=self.SlowRun), batch_size=1,shuffle=True)
+        return DataLoader(AccentHuggingBased(batch_size=self.batch_size, data_type="train",SlowRun=self.SlowRun), batch_size=1,shuffle=True, num_workers=0)
 
     def val_dataloader(self):
         return DataLoader(AccentHuggingBased(data_type="test",batch_size=self.batch_size,SlowRun=self.SlowRun), batch_size=1, shuffle=False)
