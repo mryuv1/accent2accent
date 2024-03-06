@@ -16,9 +16,7 @@ import os
 from lib_.DataLoader import AccentHuggingBasedDataLoader
 import wandb
 import pickle
-import os
-os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
-from fastai.vision.all import *
+
 class TensorBoardImageLogger(TensorBoardLogger):
     """
     Wrapper for TensorBoardLogger which logs images to disk,
@@ -63,9 +61,11 @@ def parse_args():
 
 
 if __name__ == '__main__':
+    #set torch seed as 42
+    torch.manual_seed(42)
     args = parse_args()
     wandb.init(project="AdaCONV")
-    checkPoint = os.path.join("NewVGGWeights", "CHECKPOINT-step=160.ckpt")
+    checkPoint = os.path.join("NewVGGWeights", "CHECKPOINT-step=3000.ckpt")
     if args['checkpoint'] is None:
         max_epochs = 1
         model = GAN(**args)
@@ -82,15 +82,14 @@ if __name__ == '__main__':
     os.makedirs(args['save_dir'], exist_ok=True)
 #    wandb.watch(model)
     args = parse_args()
-
+    print(args)
     lr_monitor = LearningRateMonitor(logging_interval='step')
-    checkpoint_callback = ModelCheckpoint(dirpath=args['save_dir'], filename='CHECKPOINT-{step}',save_top_k = 2, monitor="g_loss", mode="min", every_n_train_steps=80)
+    checkpoint_callback = ModelCheckpoint(dirpath=args['save_dir'], filename='CHECKPOINT-{step}',save_top_k = 3, monitor="g_loss", mode="min", every_n_train_steps=300)
     wandb.watch(model)
     #Move model to cuda
-    model = model.cuda()
     trainer = pl.Trainer(max_epochs=args['epochs'], callbacks=[checkpoint_callback, lr_monitor], logger=logger, max_steps=args['iterations'], accelerator="cpu")
                          #accelerator="cpu")
 
 
-    trainer.fit(model, datamodule=datamodule)
+    trainer.fit(model, datamodule=datamodule,ckpt_path=checkPoint)
     trainer.save_checkpoint("./model.ckpt")

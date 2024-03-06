@@ -2,7 +2,7 @@
 import random
 import warnings
 from pathlib import Path
-
+from collections import deque
 from PIL import Image
 import torch
 import pickle
@@ -395,15 +395,14 @@ class AccentHuggingBasedDataLoader(pl.LightningDataModule):
         pass
 
 
-#TRAIN THE MODEL
 class MOSHIKOTrainer(pl.LightningModule):
     def __init__(self, model, dataloader, save_dir):
         super().__init__()
         self.model = model
         self.dataloader = dataloader
         self.save_dir = save_dir
-        self.modules
-
+        self.losses = deque(maxlen=10)
+        self.accuracies = deque(maxlen=10)
 
     def forward(self, x):
         return self.model(x)
@@ -415,7 +414,6 @@ class MOSHIKOTrainer(pl.LightningModule):
         y = y.long().squeeze(0)
 
         logits = self.model(x.squeeze(0))
-        #print logits and y data type
 
         # Compute the loss using CrossEntropyLoss
         loss = torch.nn.functional.cross_entropy(logits, y)
@@ -428,6 +426,21 @@ class MOSHIKOTrainer(pl.LightningModule):
         self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True)
         self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=True)
         wandb.log({"acc": acc, "loss": loss})
+
+        # Append loss and accuracy to the deque
+        self.losses.append(loss.item())
+        self.accuracies.append(acc)
+
+        # Calculate and log average loss and accuracy over the past 10 iterations
+        if len(self.losses) == 10:
+            avg_loss = sum(self.losses) / len(self.losses)
+            avg_acc = sum(self.accuracies) / len(self.accuracies)
+            # Log accuracy and loss for visualization
+            self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True)
+            self.log('train_acc', acc, on_step=True, on_epoch=True, prog_bar=True)
+            self.logger.experiment.add_scalar('avg_train_loss_last_10_iterations', avg_loss, self.global_step)
+            self.logger.experiment.add_scalar('avg_train_acc_last_10_iterations', avg_acc, self.global_step)
+
         return loss
 
     def configure_optimizers(self):
@@ -441,8 +454,6 @@ class MOSHIKOTrainer(pl.LightningModule):
     def on_epoch_end(self):
         # Save weights at the end of each epoch
         torch.save(self.model.state_dict(), os.path.join(self.save_dir, f'epoch_{self.current_epoch}_weights.pth'))
-
-
 
 def main(args):
     wandb.init(project="accent2accent")

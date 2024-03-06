@@ -20,17 +20,15 @@ class AccentHuggingBased(Dataset):
         self.batch_size = batch_size
 
         # Load the dataset
-        dataset = load_dataset("NathanRoll/commonvoice_train_gender_accent_16k", split="train[:75%]")
+        dataset = load_dataset("NathanRoll/commonvoice_train_gender_accent_16k", split="train")
         # Rename column 'accent' to 'labels'
         dataset = dataset.rename_column('accent', 'labels')
 
         # Shuffle the dataset
-        dataset = dataset.shuffle(seed=38)
-        if data_type == "train":
-            self.dataset = dataset.select(range(0,int(len(dataset)*0.92)))
-        else:
-            self.dataset = dataset.select(range(int(len(dataset)*0.92),len(dataset)))
-
+        #reset seed
+        torch.initial_seed()
+        random.seed(42)
+        dataset = dataset.shuffle(seed=42)
         self.label_to_number_mapping = None
         self.num_classes = 0
         self.slow_run = SlowRun
@@ -38,8 +36,23 @@ class AccentHuggingBased(Dataset):
         self.good_labels = []
         self._create_mapping()
         self.check_if_valid_labels_exist()
-        if not SlowRun and data_type == "train":
-            self._filter_labels_not_in_good_labels()
+
+        if data_type == "train":
+            self.dataset = dataset.select(range(0,int(len(dataset)*0.35)))
+        else:
+            self.dataset = dataset.select(range(int(len(dataset)*0.35),0.38*len(dataset)))
+
+       # self.dataset = self.dataset.filter(lambda example: example['labels'] in self.good_labels)
+
+        # self.label_to_number_mapping = None
+        # self.num_classes = 0
+        # self.slow_run = SlowRun
+        # self.TzlilTrain = TzlilTrain
+        # self.good_labels = []
+        # self._create_mapping()
+        # self.check_if_valid_labels_exist()
+        # if not SlowRun and data_type == "train":
+        #     self._filter_labels_not_in_good_labels()
 
 
 
@@ -144,16 +157,16 @@ class AccentHuggingBased(Dataset):
     @staticmethod
     def _process_audio_array(audio_data, sr, segment_duration=4):
         """
-           Process the input audio data into spectrograms and target amplitudes.
+        Process the input audio data into spectrograms and target amplitudes.
 
-           Args:
-               audio_data (np.ndarray): Input audio data.
-               sr (int): Sample rate of the audio data.
-               segment_duration (float): Duration of each segment in seconds. Default is 4.
+        Args:
+            audio_data (np.ndarray): Input audio data.
+            sr (int): Sample rate of the audio data.
+            segment_duration (float): Duration of each segment in seconds. Default is 4.
 
-           Returns:
-               tuple: A tuple containing a list of spectrograms and a list of target amplitudes.
-           """
+        Returns:
+            tuple: A tuple containing a list of spectrograms and a list of target amplitudes.
+        """
         # Calculate the number of samples per segment
         samples_per_segment = sr * segment_duration
 
@@ -162,13 +175,14 @@ class AccentHuggingBased(Dataset):
 
         # Pad the audio to make it evenly divisible into segments
         pad_length = num_segments * samples_per_segment - len(audio_data)
-        audio_data = np.pad(audio_data, (0, pad_length), mode='constant')
-        audio_data = audio_data.astype(np.float32)
-        # Initialize an empty list to store spectrograms and target amplitudes
-        spectrograms = []
-        target_amplitudes = []
+        audio_data = np.pad(audio_data, (0, pad_length), mode='constant').astype(np.float32)
 
-        # Generate a Mel-spectrogram for each segment
+        # Initialize arrays to store spectrograms and target amplitudes
+        spectrograms = np.zeros((num_segments, 256, 376),
+                                dtype=np.float32)  # Assuming default parameters for melspectrogram
+        target_amplitudes = np.zeros(num_segments, dtype=np.float32)
+
+        # Generate Mel-spectrogram for each segment
         for i in range(num_segments):
             # Extract segment from the padded audio
             start_sample = samples_per_segment * i
@@ -176,11 +190,8 @@ class AccentHuggingBased(Dataset):
             audio_segment = audio_data[start_sample:end_sample]
 
             # Generate Mel-spectrogram for the segment
-            n_fft = 2048
-            hop_length = 512
-            n_mels = 256
             S = librosa.feature.melspectrogram(
-                y=audio_segment, sr=sr, n_fft=n_fft, hop_length=hop_length, n_mels=n_mels, window='hann'
+                y=audio_segment, sr=sr, n_fft=2048, hop_length=512, n_mels=256, window='hann'
             )
             # Convert to log scale (dB)
             S_dB = librosa.power_to_db(S, ref=np.max)
@@ -188,14 +199,104 @@ class AccentHuggingBased(Dataset):
             # Compute target amplitude for the segment
             target_amplitude = np.max(np.abs(audio_segment))
 
-            # Append spectrogram and target amplitude to the lists
-            spectrograms.append(S_dB)
-            target_amplitudes.append(target_amplitude)
+            # Store spectrogram and target amplitude
+            spectrograms[i] = S_dB
+            target_amplitudes[i] = target_amplitude
+
         return spectrograms, target_amplitudes
 
-
-
     def _createBatch2(self, sample_indices):
+        batch_audio = []
+        batch_labels = []
+        batch_sr = []
+        batch_max_amplitudes = []
+
+        zero_audio = []
+        zero_labels = []
+        zero_sr = []
+        zero_max_amplitudes = []
+
+        label_count = {}
+        zero_count = 0
+        all_count = 0
+
+        label_used = {}
+
+        for idx in sample_indices:
+            label_number = self.get_label_number(self.dataset[idx]['labels'])
+
+            if label_number == -1:
+                continue
+            sr = self.dataset[idx]['audio']['sampling_rate']
+
+            spectrograms, target_amplitudes = self._process_audio_array(self.dataset[idx]['audio']['array'], sr)
+
+            if label_number == 0:
+                zero_audio.extend(
+                    [torch.stack([torch.tensor(spectrograms[j]) for _ in range(1)]) for j in range(len(spectrograms))])
+                zero_labels.extend([label_number] * len(spectrograms))
+                zero_sr.extend([sr] * len(spectrograms))
+                zero_max_amplitudes.extend(target_amplitudes)
+                zero_count += len(spectrograms)
+            else:
+                batch_audio.extend(
+                    [torch.stack([torch.tensor(spectrograms[j]) for _ in range(1)]) for j in range(len(spectrograms))])
+                batch_labels.extend([label_number] * len(spectrograms))
+                batch_sr.extend([sr] * len(spectrograms))
+                batch_max_amplitudes.extend(target_amplitudes)
+
+            all_count += len(spectrograms)
+            label_count[label_number] = label_count.get(label_number, 0) + len(spectrograms)
+
+        max_size = min(len(batch_audio), len(zero_audio))
+        content = batch_audio[:max_size]
+        style = zero_audio[:max_size]
+        batch_labels += zero_labels
+        while not content:
+            idx = random.randint(0, len(self.dataset) - 1)
+            label_number = self.get_label_number(self.dataset[idx]['labels'])
+
+            if label_number != 0:
+                continue
+            audio_data = self.dataset[idx]['audio']['array']
+            sr = self.dataset[idx]['audio']['sampling_rate']
+
+            spectrograms, target_amplitudes = self._process_audio_array(audio_data, sr)
+            content.extend(
+                [torch.stack([torch.tensor(spectrograms[j]) for _ in range(1)]) for j in range(len(spectrograms))])
+            batch_labels.extend([label_number] * len(spectrograms))
+            batch_sr.extend([sr] * len(spectrograms))
+            batch_max_amplitudes.extend(target_amplitudes)
+            all_count += len(spectrograms)
+            label_count[label_number] = label_count.get(label_number, 0) + len(spectrograms)
+
+        while not style:
+            idx = random.randint(0, len(self.dataset) - 1)
+
+            label_number = self.get_label_number(self.dataset[idx]['labels'])
+
+            if label_number == 0 or label_number == -1:
+                continue
+            audio_data = self.dataset[idx]['audio']['array']
+            sr = self.dataset[idx]['audio']['sampling_rate']
+
+            spectrograms, target_amplitudes = self._process_audio_array(audio_data, sr)
+            style.extend(
+                [torch.stack([torch.tensor(spectrograms[j]) for _ in range(1)]) for j in range(len(spectrograms))])
+            batch_labels.extend([label_number] * len(spectrograms))
+            batch_sr.extend([sr] * len(spectrograms))
+            batch_max_amplitudes.extend(target_amplitudes)
+            all_count += len(spectrograms)
+            label_count[label_number] = label_count.get(label_number, 0) + len(spectrograms)
+
+
+        return {
+                   "content": torch.stack(content),
+                   "style": torch.stack(style)
+               }, torch.tensor(batch_labels), torch.tensor(batch_sr), torch.tensor(batch_max_amplitudes)
+
+
+    def _createBatch3(self, sample_indices):
 
         batch_audio = []
         batch_labels = []
@@ -391,7 +492,7 @@ class AccentHuggingBasedDataLoader(pl.LightningDataModule):
     @staticmethod
     def add_argparse_args(parent_parser):
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
-        parser.add_argument("--batch_size", type=int, default=45, help="Batch size for training")
+        parser.add_argument("--batch_size", type=int, default=35, help="Batch size for training")
         parser.add_argument("--epochs", type=int, default=10, help="Number of epochs for training")
         parser.add_argument("--weights_path", type=str, default="vgg.pth", help="Path to the weights file")
         parser.add_argument("--save_dir", type=str, default="NewVGGWeights", help="Directory to save weights")
@@ -419,7 +520,7 @@ class AccentHuggingBasedDataLoader(pl.LightningDataModule):
 
     def train_dataloader(self):
         # Use the modify_batch function to add noise to the batch
-        return DataLoader(AccentHuggingBased(batch_size=self.batch_size, data_type="train",SlowRun=self.SlowRun), batch_size=1,shuffle=True, num_workers=0)
+        return DataLoader(AccentHuggingBased(batch_size=self.batch_size, data_type="train",SlowRun=self.SlowRun), batch_size=1,shuffle=True, num_workers=2)
 
     def val_dataloader(self):
         return DataLoader(AccentHuggingBased(data_type="test",batch_size=self.batch_size,SlowRun=self.SlowRun), batch_size=1, shuffle=False)

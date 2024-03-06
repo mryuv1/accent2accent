@@ -35,7 +35,7 @@ class GAN(pl.LightningModule):
         # Losses
         # mm = Moment Matching, gram = Gram matrix based, cmd = Central Moment Discrepancy
         parser.add_argument('--style-loss', type=str, default='mm', choices=['mm', 'gram', 'cmd'], help="The style loss")
-        parser.add_argument('--style-weight', type=float, default=5.0, help="The weight of the style loss")
+        parser.add_argument('--style-weight', type=float, default=1.0, help="The weight of the style loss")
         parser.add_argument('--content-loss', type=str, default='mse', choices=['mse'], help="The content loss")
         parser.add_argument('--content-weight', type=float, default=1.0, help="The weight of the content loss")
         parser.add_argument('--width-output', type=int, default=376, help="The width of the output image")
@@ -43,7 +43,7 @@ class GAN(pl.LightningModule):
         parser.add_argument('--num-channels', type=int, default=1, help="The number of channels in the input image")
         parser.add_argument('--alpha', type=float, default=1.0, help="The alpha parameter for AdaIN")
         parser.add_argument('--fm-weight', type=float, default=1.0, help="The weight of the feature matching loss")
-        parser.add_argument('--AdversionalLossWeight', type=float, default=0.5, help="The weight of the adversarial loss")
+        parser.add_argument('--AdversionalLossWeight', type=float, default=0.2, help="The weight of the adversarial loss")
 
         # Optimizer
         parser.add_argument('--lr', type=float, default=0.0001, help="The learning rate")
@@ -108,6 +108,8 @@ class GAN(pl.LightningModule):
         #Define the forward pass for the gan
         return self.generator(content, style)
 
+
+
     def init_weights(self):
         # List all the files in the directory
         files = os.listdir("NewVGGWeights")
@@ -130,6 +132,8 @@ class GAN(pl.LightningModule):
         return F.binary_cross_entropy(y_hat, y)
 
     def training_step(self, batch, batch_idx):
+        self.hparams.AdversionalLossWeight = 0.2
+        self.hparams.style_weight = 1.0
         inputs = batch["content"].squeeze(0)
         styles = batch["style"].squeeze(0)
 
@@ -157,6 +161,7 @@ class GAN(pl.LightningModule):
                   "The style loss is ", style_loss)
         else:
             # Calculate the BCE between the generated images as they were real
+
             loss_of_folling_descriminator = self.hparams.AdversionalLossWeight * self.adversarial_loss(
                 self.discriminator(self.generated_imgs.detach()), torch.ones(inputs.size(0), 1).type_as(inputs))
             # loss of the descriminator being fooled by the generated images
@@ -189,7 +194,8 @@ class GAN(pl.LightningModule):
         # Backward pass and optimization for discriminator
         self.manual_backward(d_loss)
         optimizer_d.step()
-
+        distance_between_g_to_d = torch.abs(d_loss - g_loss)
+        self.log("TheShit", distance_between_g_to_d, prog_bar=True)
         return {"g_loss": g_loss, "d_loss": d_loss}
 
     def configure_optimizers(self):
@@ -225,7 +231,7 @@ class GAN(pl.LightningModule):
                 torch.save(self.generator.state_dict(), os.path.join(current_dir, "NewVGGWeights", f'GeneratorWeights-{self.global_step}.pth'))
                 torch.save(self.discriminator.state_dict(), os.path.join(current_dir, "NewVGGWeights", f'DiscriminatorWeights-{self.global_step}.pth'))
         else:
-            if self.global_step % 100 == 0:
+            if self.global_step % 300 == 0:
                 # Save the weights for the generator and the discriminator
                 current_dir = os.getcwd()
                 torch.save(self.generator.state_dict(),

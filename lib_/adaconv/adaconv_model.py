@@ -21,18 +21,15 @@ class AdaConvModel(nn.Module):
     def __init__(self, style_size, style_channels, kernel_size):
         super().__init__()
         self.encoder = VGGEncoder(TzlilTrain=False)
-        print(style_size, self.encoder.scale_factor)
         style_in_shape = (self.encoder.out_channels, style_size // self.encoder.scale_factor, style_size // self.encoder.scale_factor)
         #TODO CHECK - CHANGE THE SECOND DIMENSION
         style_in_shape = (self.encoder.out_channels, style_size // self.encoder.scale_factor, 376 // self.encoder.scale_factor)
         style_out_shape = (style_channels, kernel_size, kernel_size)
-        print(style_in_shape, style_out_shape)
         self.style_encoder = GlobalStyleEncoder(in_shape=style_in_shape, out_shape=style_out_shape)
         self.decoder = AdaConvDecoder(style_channels=style_channels, kernel_size=kernel_size)
 
     def forward(self, content, style, return_embeddings=False):
         self.encoder.freeze()
-
         # Encode -> Decode
         content_embeddings, style_embeddings = self._encode(content, style)
         output = self._decode(content_embeddings[-1], style_embeddings[-1])

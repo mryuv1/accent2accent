@@ -55,7 +55,7 @@ class VGGEncoder(nn.Module):
             current_directory = os.path.dirname(__file__)
         if path_to_weights is None:
             path_to_weights = os.path.join(current_directory, "vgg.pth")
-        #self.vgg19 = LoadVGG19(path_to_weights,current_directory, TzlilSucces, TzlilTrain, num_classes)
+        self.vgg19 = LoadVGG19(path_to_weights,current_directory, TzlilSucces, TzlilTrain, num_classes)
         #self.vgg19 = torchvggish.vggish()
        # self.vgg19 = models.vgg19(pretrained=True)
        # self.vgg19.features[0] = torch.nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1)
