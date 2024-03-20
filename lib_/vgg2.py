@@ -12,16 +12,20 @@ from torchvision import models
 from torchvision.transforms import transforms
 import os
 import torchvggish
+import torchvggish
 
-
-def LoadVGG19(path_to_weights=None,current_directory=None,TzlilSuccess=False,TzlilTrain=False,num_classes=2):
+def LoadVGG19(path_to_weights=None,current_directory=None,TzlilSuccess=False,TzlilTrain=False,num_classes=6, freeze_conv=True):
     # Load the VGGish model
-    model = torchvggish.vggish()
-    return model
   #  # Modify the first layer to accept 1 channel input
-  #  vgg19.features[0] = nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1)
-
+    vgg19 = models.vgg19(pretrained=True)
+    # VGG
+    for name, param in vgg19.named_parameters():
+        print(name, param.shape)
+    if freeze_conv:
+        for param in vgg19.features.parameters():
+            param.requires_grad = False
     # Modify the fully connected layers
+
     num_features = vgg19.classifier[0].in_features
     if TzlilTrain:
         vgg19.classifier = nn.Sequential(
@@ -33,6 +37,7 @@ def LoadVGG19(path_to_weights=None,current_directory=None,TzlilSuccess=False,Tzl
             nn.Dropout(),
             nn.Linear(4096, num_classes),  # Change num_classes to the number of output classes
         )
+    return vgg19
 
 
     # Load weights if provided
@@ -49,49 +54,87 @@ def LoadVGG19(path_to_weights=None,current_directory=None,TzlilSuccess=False,Tzl
     return vgg19
 
 class VGGEncoder(nn.Module):
-    def __init__(self, path_to_weights=None,current_directory=None,normalize=True, post_activation=True, TzlilSucces=False, TzlilTrain=False, num_classes=2):
+    def __init__(self,VGGish=True, path_to_weights=None,current_directory=None,normalize=True, post_activation=True, TzlilSucces=False, TzlilTrain=False, num_classes=6):
         super().__init__()
+        self.VGGish = VGGish
         if current_directory is None:
             current_directory = os.path.dirname(__file__)
         if path_to_weights is None:
             path_to_weights = os.path.join(current_directory, "vgg.pth")
-        self.vgg19 = LoadVGG19(path_to_weights,current_directory, TzlilSucces, TzlilTrain, num_classes)
-        #self.vgg19 = torchvggish.vggish()
+        #self.vgg19 = LoadVGG19(path_to_weights,current_directory, TzlilSucces, TzlilTrain, num_classes)
+       # self.pooler =  nn.MaxPool2d(3, 3)
+        self.pooler = nn.AvgPool2d(3,3)
+        if VGGish:
+            self.vgg19 = torchvggish.vggish(postprocess=False)
+            print("VGGish")
+            #Print the layers
+            for name, param in self.vgg19.named_parameters():
+                print(name, param.shape)
+            self.vgg19.embeddings = nn.Sequential(
+                nn.Linear(17920, 4096),
+                nn.ReLU(inplace=True),
+                nn.Dropout(),
+                nn.Linear(4096, 4096),
+                nn.ReLU(inplace=True),
+                nn.Dropout(),
+                nn.Linear(4096, num_classes),  # Change num_classes to the number of output classes
+            )
+        else:
+            self.vgg19 = LoadVGG19(path_to_weights, current_directory, TzlilSucces, TzlilTrain, num_classes)
+
+
+        for param in self.vgg19.features.parameters():
+            param.requires_grad = False
        # self.vgg19 = models.vgg19(pretrained=True)
        # self.vgg19.features[0] = torch.nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1)
         self.TzlilTrain = TzlilTrain
-        if normalize:
-            mean = torch.tensor([0.485, 0.456, 0.406]).mean()
-            std = torch.tensor([0.229, 0.224, 0.225]).mean()
-            self.normalize = transforms.Normalize(mean=mean, std=std)
+        if TzlilTrain:
+            print("Initial Tzlil Train mode")
+            return
         else:
-            self.normalize = nn.Identity()
+            if normalize:
+                mean = torch.tensor([0.485, 0.456, 0.406]).mean()
+                std = torch.tensor([0.229, 0.224, 0.225]).mean()
+                self.normalize = transforms.Normalize(mean=mean, std=std)
+            else:
+                self.normalize = nn.Identity()
 
-        if post_activation:
-            layer_names = {'relu1_1', 'relu2_1', 'relu3_1', 'relu4_1'}
-        else:
-            layer_names = {'conv1_1', 'conv2_1', 'conv3_1', 'conv4_1'}
-        blocks, block_names, scale_factor, out_channels = extract_vgg_blocks(self.vgg19.features,
-                                                                             layer_names)
+            if post_activation:
+                layer_names = {'relu1_1', 'relu2_1', 'relu3_1', 'relu4_1'}
+            else:
+                layer_names = {'conv1_1', 'conv2_1', 'conv3_1', 'conv4_1'}
+            blocks, block_names, scale_factor, out_channels = extract_vgg_blocks(self.vgg19.features,
+                                                                                 layer_names)
 
 
 
-        self.blocks = nn.ModuleList(blocks)
-        self.block_names = block_names
-        self.scale_factor = scale_factor
-        self.out_channels = out_channels
+            self.blocks = nn.ModuleList(blocks)
+            self.block_names = block_names
+            self.scale_factor = scale_factor
+            self.out_channels = out_channels
 
     def forward(self, xs):
-        #remove the first channel
-        xs = xs.squeeze(0)
-        xs = self.normalize(xs)
-        xs.to(torch.float32)
-        features = []
-        for block in self.blocks:
-            xs = block(xs)
-            features.append(xs)
+        if self.TzlilTrain:
+            if self.VGGish:
+                xs = self.vgg19.features(xs)
+                xs = self.pooler(xs)
+                xs = xs.view(-1, 17920)
+                return self.vgg19.embeddings(xs)
+            else:
+              #  print(xs.shape)
+              #  print(self.vgg19.features(xs).shape)
+                return self.vgg19(xs)
+        else:
+            #remove the first channel
+            xs = xs.squeeze(0)
+            xs = self.normalize(xs)
+            xs.to(torch.float32)
+            features = []
+            for block in self.blocks:
+                xs = block(xs)
+                features.append(xs)
 
-        return features
+            return features
 
     def freeze(self):
         self.eval()

@@ -5,7 +5,7 @@ import torch.nn as nn
 class Discriminator(nn.Module):
     def __init__(self, input_shape, channels_in=1):
         super(Discriminator, self).__init__()
-        print("The input shape is ", input_shape)
+        # print("The input shape is ", input_shape)
         self.conv_layers = nn.Sequential(
             nn.Conv2d(channels_in, 64, kernel_size=4, stride=2, padding=1),
             nn.LeakyReLU(0.2, inplace=True),

@@ -4,9 +4,9 @@ import torchinfo
 from torch import nn
 import math
 
-from lib_.adaconv.adaconv import AdaConv2d
-from lib_.adaconv.kernel_predictor import KernelPredictor
-from lib_.vgg import VGGEncoder
+from adaconv.adaconv import AdaConv2d
+from adaconv.kernel_predictor import KernelPredictor
+from vgg import VGGEncoder
 
 
 class AdaConvModel(nn.Module):

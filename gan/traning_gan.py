@@ -8,14 +8,16 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.loggers import TensorBoardLogger
-sys.path.append('..//lib_')
-from lib_.data_loader import DataModule
-#from lib_.lightning.datamodule import DataModule
+
+sys.path.append('lib_')
+# from lib_.data_loader import DataModule
+# from lib_.lightning.datamodule import DataModule
 from ganlightningmodel import GAN
 import os
-from lib_.DataLoader import AccentHuggingBasedDataLoader
+from DataLoader import AccentHuggingBasedDataLoader
 import wandb
 import pickle
+
 
 class TensorBoardImageLogger(TensorBoardLogger):
     """
@@ -40,6 +42,7 @@ class TensorBoardImageLogger(TensorBoardLogger):
         with open(file, 'wb') as f:
             pickle.dump(img_tensor, f)
 
+
 def parse_args():
     # Init parser
     parser = ArgumentParser()
@@ -47,11 +50,14 @@ def parse_args():
                         help='The number of training iterations.')
     parser.add_argument('--log-dir', type=str, default='./',
                         help='The directory where the logs are saved to.')
-    parser.add_argument('--checkpoint', type=str,
+    parser.add_argument('--checkpoint', type=str, default=None,
                         help='Resume training from a checkpoint file.')
     parser.add_argument('--val-interval', type=int, default=1000,
                         help='How often a validation step is performed. '
                              'Applies the model to several fixed images and calculate the loss.')
+    parser.add_argument('--workarea', type=str, default='/home/labs/training/class41/PycharmProjects/accent2accent', help="Work are for checkpoints")
+    parser.add_argument('--prefix', type=str, default="prefix", help="Prefix for checkpoints saving")
+    parser.add_argument('--step', type=str, default=3000, help="How often to save")
 
     parser = AccentHuggingBasedDataLoader.add_argparse_args(parser)
     parser = GAN.add_argparse_args(parser)
@@ -61,35 +67,44 @@ def parse_args():
 
 
 if __name__ == '__main__':
-    #set torch seed as 42
+    os.environ['HF_HOME'] = "dataset"
+    # set torch seed as 42
     torch.manual_seed(42)
     args = parse_args()
     wandb.init(project="AdaCONV")
-    checkPoint = os.path.join("NewVGGWeights", "CHECKPOINT-step=3000.ckpt")
-    if args['checkpoint'] is None:
+    # checkPoint = os.path.join("NewVGGWeights", "CHECKPOINT-step=3000.ckpt")
+
+    if args['checkpoint'] is not None:
+        checkPoint = os.path.join(args["workarea"], args["save_dir"], args['checkpoint'])
+    else:
+        checkPoint = None
+    if checkPoint is None:
         max_epochs = 1
         model = GAN(**args)
     else:
         # We need to increment the max_epoch variable, because PyTorch Lightning will
         #   resume training from the beginning of the next epoch if resuming from a mid-epoch checkpoint.
-        max_epochs = torch.load(args['checkpoint'])['epoch'] + 1
-        model = GAN.load_from_checkpoint(checkpoint_path=args['checkpoint'])
+        max_epochs = torch.load(checkPoint)
+        model = GAN.load_from_checkpoint(checkpoint_path=checkPoint)
+    # TODO - MODIFY IT SO IT WILL TAKE MAYBE THE LAST CHECKPOINT, if not , enter as a flag python -checkpoint, give PATH to CHECKPOINT, it will resume from checkpoint
 
-    model = GAN.load_from_checkpoint(checkPoint)
     logger = TensorBoardImageLogger(args['log_dir'], name='logs')
-    #datamodule = DataModule(**args)
+    # datamodule = DataModule(**args)
     datamodule = AccentHuggingBasedDataLoader(**args)
     os.makedirs(args['save_dir'], exist_ok=True)
-#    wandb.watch(model)
+    #    wandb.watch(model)
     args = parse_args()
-    print(args)
     lr_monitor = LearningRateMonitor(logging_interval='step')
-    checkpoint_callback = ModelCheckpoint(dirpath=args['save_dir'], filename='CHECKPOINT-{step}',save_top_k = 3, monitor="g_loss", mode="min", every_n_train_steps=300)
+    checkpoint_callback = ModelCheckpoint(dirpath=os.path.join(args["workarea"],args['save_dir']), filename=f'CHECKPOINT-{args["prefix"]}-{args["step"]}', save_top_k=4,
+                                          monitor="TheShit", mode="min", every_n_train_steps=500)
     wandb.watch(model)
-    #Move model to cuda
-    trainer = pl.Trainer(max_epochs=args['epochs'], callbacks=[checkpoint_callback, lr_monitor], logger=logger, max_steps=args['iterations'], accelerator="cpu")
-                         #accelerator="cpu")
+    # Move model to cuda
+    trainer = pl.Trainer(max_epochs=args['epochs'], callbacks=[checkpoint_callback, lr_monitor], logger=logger,
+                         max_steps=args['iterations'])
+    # accelerator="cpu")
 
+    if torch.cuda.is_available():
+        model = model.cuda()
 
-    trainer.fit(model, datamodule=datamodule,ckpt_path=checkPoint)
+    trainer.fit(model, datamodule=datamodule, ckpt_path=checkPoint)
     trainer.save_checkpoint("./model.ckpt")

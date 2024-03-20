@@ -11,8 +11,8 @@ import os
 import wandb
 sys.path.append('..//lib_')
 #from lib_.lightning.datamodule import DataModule
-from lib_.lightning.lightningmodel import LightningModel
-from lib_.DataLoader import AccentHuggingBasedDataLoader
+from lightning.lightningmodel import LightningModel
+from DataLoader import AccentHuggingBasedDataLoader
 import pickle
 PC = "Macbook"
 

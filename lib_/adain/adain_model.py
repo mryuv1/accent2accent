@@ -2,8 +2,8 @@ from argparse import ArgumentParser
 
 from torch import nn
 
-from lib_.adain.adain import AdaInstanceNorm2d
-from lib_.vgg import VGGDecoder, VGGEncoder
+from adain.adain import AdaInstanceNorm2d
+from vgg import VGGDecoder, VGGEncoder
 
 
 class AdaINModel(nn.Module):
