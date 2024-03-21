@@ -96,8 +96,9 @@ if __name__ == '__main__':
     #    wandb.watch(model)
     args = parse_args()
     lr_monitor = LearningRateMonitor(logging_interval='step')
-    checkpoint_callback = ModelCheckpoint(dirpath=os.path.join(args["workarea"],args['save_dir']), filename=f'CHECKPOINT-{args["prefix"]}-{args["step"]}', save_top_k=4,
-                                          monitor="TheShit", mode="min", every_n_train_steps=500)
+   # checkpoint_callback = ModelCheckpoint(dirpath=os.path.join(args["workarea"],args['save_dir']), filename=f'CHECKPOINT-{args["prefix"]}-{args["step"]}', save_top_k=4,
+                                      #    monitor="TheShit", mode="min", every_n_train_steps=500)
+    checkpoint_callback = ModelCheckpoint(dirpath=os.path.join(args["workarea"],args['save_dir']), filename=f'CHECKPOINT-{args["prefix"]}', save_top_k=4,every_n_train_steps=1500)
     wandb.watch(model)
     # Move model to cuda
     trainer = pl.Trainer(max_epochs=args['epochs'], callbacks=[checkpoint_callback, lr_monitor], logger=logger,
