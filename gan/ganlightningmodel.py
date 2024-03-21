@@ -23,7 +23,7 @@ from loss import MomentMatchingStyleLoss, GramStyleLoss, CMDStyleLoss, MSEConten
 import os
 import wandb
 from discriminator import Discriminator
-
+from PIL import Image
 
 class GAN(pl.LightningModule):
     @staticmethod
@@ -109,6 +109,10 @@ class GAN(pl.LightningModule):
         self.old_loss = 0
         if not os.path.exists("images"):
             os.makedirs("images")
+        self.content_mean = 0
+        self.style_mean = 0
+        self.content_std = 0
+        self.style_std = 0
     #  self.init_weights()
     def forward(self, content, style):
         # Define the forward pass for the gan
@@ -135,10 +139,21 @@ class GAN(pl.LightningModule):
     def adversarial_loss(self, y_hat, y):
         return F.binary_cross_entropy(y_hat, y)
 
-    def training_step(self, batch, batch_idx):
+
+    def training_step(self, batch, batch_idx,eps=1e-6):
+
         inputs = batch["content"].squeeze(0)
         styles = batch["style"].squeeze(0)
+        # Calculate mean and standard deviation along specific dimensions
+        self.content_mean = inputs.mean(dim=(0, 2, 3), keepdim=True)
+        self.content_std = inputs.std(dim=(0, 2, 3), keepdim=True)
+        self.style_mean = styles.mean(dim=(0, 2, 3), keepdim=True)
+        self.style_std = styles.std(dim=(0, 2, 3), keepdim=True)
 
+        # Normalize spectrograms
+        inputs = (inputs - self.content_mean) / (self.content_std + eps)  # Add a small value to avoid division by zero
+        styles = (styles - self.style_mean) / (self.style_std + eps)
+        #check if iteration is the first one
         # Access optimizers
         optimizer_g, optimizer_d = self.optimizers()
 
@@ -152,31 +167,37 @@ class GAN(pl.LightningModule):
         content_loss, style_loss = self.generator_loss(embeddings)
         self.log("Generator Style Loss", style_loss, prog_bar=True)
         self.log("Generator Content Loss", content_loss, prog_bar=True)
-        if content_loss < 20:
-            g_loss = content_loss + style_loss
-        else:   
-            g_loss = content_loss
+        g_loss = content_loss + style_loss
         wandb.log({"Content Loss": content_loss, "Style Loss": style_loss})
         # Check if the 'images' directory exists, if not, create it
 
 
         # Check if the absolute difference between the current generator loss and the previous generator loss is greater than 700
-        if torch.abs(g_loss - self.old_loss) > 700:
+        if torch.abs(g_loss - self.old_loss) > 400:
             # Save the inputs, style, and generated images
             for idx, (input_img, style_img, generated_img) in enumerate(zip(inputs, styles, self.generated_imgs)):
-                input_img_path = f"images/input_{batch_idx}_{idx}.jpg"
-                style_img_path = f"images/style_{batch_idx}_{idx}.jpg"
-                generated_img_path = f"images/generated_{batch_idx}_{idx}.jpg"
+                # Normalize images
+                input_img_norm = F.normalize(input_img, [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                style_img_norm = F.normalize(style_img, [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                generated_img_norm = F.normalize(generated_img, [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 
                 # Convert tensors to PIL images
-                input_img_pil = torchvision.transforms.ToPILImage()(input_img.cpu().detach().squeeze(0))
-                style_img_pil = torchvision.transforms.ToPILImage()(style_img.cpu().detach().squeeze(0))
-                generated_img_pil = torchvision.transforms.ToPILImage()(generated_img.cpu().detach().squeeze(0))
+                input_img_pil = torchvision.transforms.ToPILImage()(input_img_norm.cpu().detach().squeeze(0))
+                style_img_pil = torchvision.transforms.ToPILImage()(style_img_norm.cpu().detach().squeeze(0))
+                generated_img_pil = torchvision.transforms.ToPILImage()(generated_img_norm.cpu().detach().squeeze(0))
 
-                # Save images
-                input_img_pil.save(input_img_path)
-                style_img_pil.save(style_img_path)
-                generated_img_pil.save(generated_img_path)
+                # Concatenate images
+                concat_img = Image.new('RGB', (
+                input_img_pil.width + style_img_pil.width + generated_img_pil.width, input_img_pil.height))
+                concat_img.paste(input_img_pil, (0, 0))
+                concat_img.paste(style_img_pil, (input_img_pil.width, 0))
+                concat_img.paste(generated_img_pil, (input_img_pil.width + style_img_pil.width, 0))
+
+                # Save concatenated image
+                concat_img_path = f"images/concat_{batch_idx}_{idx}_g_loss_{g_loss}.jpg"
+                concat_img.save(concat_img_path)
+
+
         if batch_idx % 20:
             log_input = inputs[0, 0, :, :]
             log_style = styles[0, 0, :, :]
@@ -201,7 +222,7 @@ class GAN(pl.LightningModule):
         loss_of_folling_descriminator = self.hparams.AdversionalLossWeight * self.adversarial_loss(
             self.discriminator(self.generated_imgs.detach()), torch.ones(inputs.size(0), 1).type_as(inputs))
         # loss of the discriminator being fooled by the generated images
-        if g_loss < 50:
+        if g_loss < 30:
             g_loss += loss_of_folling_descriminator
             print("g loss:", g_loss, "content loss:", content_loss,
                   "style loss:", style_loss, "Fooling discriminator:",
@@ -219,7 +240,7 @@ class GAN(pl.LightningModule):
         self.manual_backward(g_loss)
         optimizer_g.step()
         # Check if generator loss is lower than 50 before updating discriminator
-        if g_loss < 50:
+        if g_loss < 30:
             # Train the discriminator
             optimizer_d.zero_grad()
             valid = torch.ones(inputs.size(0), 1).type_as(inputs)
@@ -279,7 +300,8 @@ class GAN(pl.LightningModule):
         for (style_features, output_features) in zip(embeddings['style'], embeddings['output']):
             style_loss.append(self.style_loss(style_features, output_features))
         style_loss = sum(style_loss) / len(style_loss)
-
+        if content_loss  > 20:
+            return self.hparams.content_weight * content_loss, 0 * style_loss
         return self.hparams.content_weight * content_loss, self.hparams.style_weight * style_loss
 
     def on_train_batch_end(self, a=0, b=0, c=0, d=0, **_):
