@@ -364,6 +364,7 @@ class AccentHuggingBased(Dataset):
         return math.ceil(len(self.dataset) / self.batch_size)
 
     def __getitem__(self, idx):
+        idx %= len(self)
         start_idx = idx * self.batch_size
         end_idx = min((idx + 1) * self.batch_size, len(self.dataset))
         sample_indices = range(start_idx, end_idx)

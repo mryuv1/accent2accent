@@ -162,7 +162,10 @@ class GAN(pl.LightningModule):
             log_input = log_input[:min_height, :]
             log_style = log_style[:min_height, :]
             log_output = log_output[:min_height, :]
-
+            #Normalize the log_output to the values of the log_input
+            log_output = (log_output - log_output.min()) / (log_output.max() - log_output.min())
+            log_input = (log_input - log_input.min()) / (log_input.max() - log_input.min())
+            log_style = (log_style - log_style.min()) / (log_style.max() - log_style.min())
             # Concatenate images horizontally
             image_array = torch.cat((log_input, log_output, log_style), dim=1)
 
