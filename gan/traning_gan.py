@@ -69,6 +69,7 @@ def parse_args():
 if __name__ == '__main__':
     os.environ['HF_HOME'] = "dataset"
     # set torch seed as 42
+    torch.set_default_dtype(torch.float32)
     torch.manual_seed(42)
     args = parse_args()
     wandb.init(project="AdaCONV")

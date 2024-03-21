@@ -46,7 +46,7 @@ class GAN(pl.LightningModule):
         parser.add_argument('--num-channels', type=int, default=1, help="The number of channels in the input image")
         parser.add_argument('--alpha', type=float, default=1.0, help="The alpha parameter for AdaIN")
         parser.add_argument('--fm-weight', type=float, default=1.0, help="The weight of the feature matching loss")
-        parser.add_argument('--AdversionalLossWeight', type=float, default=0.5,
+        parser.add_argument('--AdversionalLossWeight', type=float, default=0.001,
                             help="The weight of the adversarial loss")
 
         # Optimizer
