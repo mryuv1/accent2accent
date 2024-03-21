@@ -23,7 +23,8 @@ class AccentHuggingBased(Dataset):
     def __init__(self, data_type="train", batch_size=2, SlowRun=True, limit_samples=5000, enable_multiprocessing=True,
                  TzlilTrain=False):
         self.batch_size = batch_size
-
+        #Set self.log_file to be a new file name dataloader_log.txt
+        self.log_file = "dataloader_log.txt"
         # Load the dataset
         dataset = load_dataset("NathanRoll/commonvoice_train_gender_accent_16k", split="train")
         # Rename column 'accent' to 'labels'
@@ -123,6 +124,9 @@ class AccentHuggingBased(Dataset):
         Returns:
             tuple: A tuple containing a list of spectrograms and a list of target amplitudes.
         """
+        #Check if the Audio_data sum is smaller than 0.1, if so return None
+        if np.sum(audio_data) < 0.1:
+            return [], []
         # Calculate the number of samples per segment
         samples_per_segment = sr * segment_duration
 
@@ -160,7 +164,8 @@ class AccentHuggingBased(Dataset):
             target_amplitudes[i] = target_amplitude
 
         if ignore_last_padded_spec:
-            return spectrograms[:-1], target_amplitudes[:-1]
+            if len(spectrograms) > 1:
+                return spectrograms[:-1], target_amplitudes[:-1]
 
         return spectrograms, target_amplitudes
 
@@ -361,10 +366,15 @@ class AccentHuggingBased(Dataset):
             batch_max_amplitudes), batch_norm_factors
 
     def __len__(self):
+        #write the len into the log file
+        with open(self.log_file, 'a') as f:
+            f.write(f"len: {len(self.dataset)}\n")
         return math.ceil(len(self.dataset) / self.batch_size)
 
     def __getitem__(self, idx):
         idx %= len(self)
+        with open(self.log_file, 'a') as f:
+            f.write(f"idx: {idx}\n")
         start_idx = idx * self.batch_size
         end_idx = min((idx + 1) * self.batch_size, len(self.dataset))
         sample_indices = range(start_idx, end_idx)

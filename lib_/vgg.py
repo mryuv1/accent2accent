@@ -81,6 +81,9 @@ class VGGEncoder(nn.Module):
         self.scale_factor = scale_factor
         self.out_channels = out_channels
 
+        #Freeze the model so it wont be trained
+        self.freeze()
+
     def forward(self, xs):
         #remove the first channel
         xs = xs.squeeze(0)

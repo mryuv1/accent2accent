@@ -105,7 +105,10 @@ class GAN(pl.LightningModule):
             self.generator = AdaConvModel(style_size, style_channels, kernel_size)
         else:
             raise ValueError('model_type')
-
+        self.GAN_log = "GAN_log.txt"
+        self.old_loss = 0
+        if not os.path.exists("images"):
+            os.makedirs("images")
     #  self.init_weights()
     def forward(self, content, style):
         # Define the forward pass for the gan
@@ -149,9 +152,31 @@ class GAN(pl.LightningModule):
         content_loss, style_loss = self.generator_loss(embeddings)
         self.log("Generator Style Loss", style_loss, prog_bar=True)
         self.log("Generator Content Loss", content_loss, prog_bar=True)
-        g_loss = content_loss + style_loss
+        if content_loss < 20:
+            g_loss = content_loss + style_loss
+        else:   
+            g_loss = content_loss
         wandb.log({"Content Loss": content_loss, "Style Loss": style_loss})
+        # Check if the 'images' directory exists, if not, create it
 
+
+        # Check if the absolute difference between the current generator loss and the previous generator loss is greater than 700
+        if torch.abs(g_loss - self.old_loss) > 700:
+            # Save the inputs, style, and generated images
+            for idx, (input_img, style_img, generated_img) in enumerate(zip(inputs, styles, self.generated_imgs)):
+                input_img_path = f"images/input_{batch_idx}_{idx}.jpg"
+                style_img_path = f"images/style_{batch_idx}_{idx}.jpg"
+                generated_img_path = f"images/generated_{batch_idx}_{idx}.jpg"
+
+                # Convert tensors to PIL images
+                input_img_pil = torchvision.transforms.ToPILImage()(input_img.cpu().detach().squeeze(0))
+                style_img_pil = torchvision.transforms.ToPILImage()(style_img.cpu().detach().squeeze(0))
+                generated_img_pil = torchvision.transforms.ToPILImage()(generated_img.cpu().detach().squeeze(0))
+
+                # Save images
+                input_img_pil.save(input_img_path)
+                style_img_pil.save(style_img_path)
+                generated_img_pil.save(generated_img_path)
         if batch_idx % 20:
             log_input = inputs[0, 0, :, :]
             log_style = styles[0, 0, :, :]
@@ -222,33 +247,7 @@ class GAN(pl.LightningModule):
             d_loss = 0
             self.log("g_loss", g_loss, prog_bar=True)
             self.log("TheShit", g_loss, prog_bar=True)
-        return {"g_loss": g_loss, "d_loss": d_loss}
-
-        # Backward pass and optimization for generator
-        self.manual_backward(g_loss)
-        optimizer_g.step()
-        # Train the discriminator
-
-        optimizer_d.zero_grad()
-        # TODO - CHECK need to be done, added logits to the adversial, to prevent loss to explode.
-        valid = torch.ones(inputs.size(0), 1).type_as(inputs)
-        real_loss = self.adversarial_loss(self.discriminator(styles), valid)
-
-        fake = torch.zeros(inputs.size(0), 1).type_as(inputs)
-        fake_loss = self.adversarial_loss(self.discriminator(self.generated_imgs.detach()), fake)
-        wandb.log({"Fake Loss": fake_loss})
-        d_loss = (real_loss + fake_loss) / 2
-        self.log("d_loss", d_loss, prog_bar=True)
-        # Put both Descriminator and generator loss in one wandb graph and give them legend and title accordinly
-        wandb.log({"Generator Loss": g_loss, "Discriminator Loss": d_loss})
-        wandb.log({"Losses": {"Generator": g_loss, "Discriminator": d_loss}})
-
-        # Backward pass and optimization for discriminator
-        self.manual_backward(d_loss)
-        torch.nn.utils.clip_grad_norm_(self.discriminator.parameters(), max_norm=4.0)
-        optimizer_d.step()
-        distance_between_g_to_d = torch.abs(d_loss - g_loss)
-        self.log("TheShit", distance_between_g_to_d, prog_bar=True)
+        self.old_loss = g_loss
         return {"g_loss": g_loss, "d_loss": d_loss}
 
     def configure_optimizers(self):
