@@ -114,7 +114,7 @@ if __name__ == '__main__':
     wandb.watch(model)
     # Move model to cuda
     trainer = pl.Trainer(max_epochs=args['epochs'], callbacks=[checkpoint_callback, lr_monitor], logger=logger,
-                         max_steps=args['iterations'])
+                         max_steps=args['iterations'], check_val_every_n_epoch=1)
     # accelerator="cpu")
 
     if torch.cuda.is_available():
