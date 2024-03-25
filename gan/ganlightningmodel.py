@@ -114,6 +114,7 @@ class GAN(pl.LightningModule):
         self.content_std = 0
         self.style_std = 0
     #  self.init_weights()
+
     def forward(self, content, style):
         # Define the forward pass for the gan
         return self.generator(content, style)
@@ -141,7 +142,6 @@ class GAN(pl.LightningModule):
 
 
     def training_step(self, batch, batch_idx,eps=1e-6):
-
         inputs = batch["content"].squeeze(0)
         styles = batch["style"].squeeze(0)
         # Calculate mean and standard deviation along specific dimensions
@@ -218,9 +218,12 @@ class GAN(pl.LightningModule):
             images = wandb.Image(image_array, caption="Left: Input, Middle: Output, Right: Style")
 
             wandb.log({"examples": images})
-
-        loss_of_folling_descriminator = self.hparams.AdversionalLossWeight * self.adversarial_loss(
-            self.discriminator(self.generated_imgs.detach()), torch.ones(inputs.size(0), 1).type_as(inputs))
+        if self.prefix == "golden":
+            loss_of_folling_descriminator = 0.0001 * self.adversarial_loss(
+                self.discriminator(self.generated_imgs.detach()), torch.ones(inputs.size(0), 1).type_as(inputs))
+        else:
+            loss_of_folling_descriminator = self.hparams.AdversionalLossWeight * self.adversarial_loss(
+                self.discriminator(self.generated_imgs.detach()), torch.ones(inputs.size(0), 1).type_as(inputs))
         # loss of the discriminator being fooled by the generated images
         if g_loss < 30:
             g_loss += loss_of_folling_descriminator
