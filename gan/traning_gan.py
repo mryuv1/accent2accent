@@ -79,6 +79,11 @@ if __name__ == '__main__':
         checkPoint = os.path.join(args["workarea"], args["save_dir"], args['checkpoint'])
     else:
         checkPoint = None
+    #Check if checkpoint exists in the path
+    if os.path.exists(checkPoint):
+        print("Checkpoint exists", checkPoint)
+    else:
+        checkPoint = None
     if checkPoint is None:
         max_epochs = 1
         model = GAN(**args)
@@ -98,8 +103,15 @@ if __name__ == '__main__':
     lr_monitor = LearningRateMonitor(logging_interval='step')
    # checkpoint_callback = ModelCheckpoint(dirpath=os.path.join(args["workarea"],args['save_dir']), filename=f'CHECKPOINT-{args["prefix"]}-{args["step"]}', save_top_k=4,
                                       #    monitor="TheShit", mode="min", every_n_train_steps=500)
-    checkpoint_callback = ModelCheckpoint(dirpath=os.path.join(args["workarea"],args['save_dir']), filename=f'CHECKPOINT-{args["prefix"]}', save_last=True,
-                                          every_n_train_steps=1000)
+    # checkpoint_callback = ModelCheckpoint(dirpath=os.path.join(args["workarea"],args['save_dir']), filename=f'CHECKPOINT-{args["prefix"]}', save_last=True,
+    #                                       every_n_train_steps=1000)
+    checkpoint_callback = ModelCheckpoint(
+        dirpath=os.path.join(args["workarea"], args['save_dir']),
+        filename=f'CHECKPOINT-{args["prefix"]}',
+        save_last=True,
+        save_top_k=None,
+        every_n_val_epochs=1  # Save at the end of every epoch
+    )
     wandb.watch(model)
     # Move model to cuda
     trainer = pl.Trainer(max_epochs=args['epochs'], callbacks=[checkpoint_callback, lr_monitor], logger=logger,
@@ -110,4 +122,4 @@ if __name__ == '__main__':
         model = model.cuda()
 
     trainer.fit(model, datamodule=datamodule, ckpt_path=checkPoint)
-    trainer.save_checkpoint("./model.ckpt")
+    # trainer.save_checkpoint("./model.ckpt")

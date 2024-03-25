@@ -240,7 +240,7 @@ class GAN(pl.LightningModule):
         self.manual_backward(g_loss)
         optimizer_g.step()
         # Check if generator loss is lower than 50 before updating discriminator
-        if g_loss < 30:
+        if content_loss < 0.002:
             # Train the discriminator
             optimizer_d.zero_grad()
             valid = torch.ones(inputs.size(0), 1).type_as(inputs)
