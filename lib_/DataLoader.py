@@ -381,75 +381,7 @@ class AccentHuggingBased(Dataset):
         batch_audio, batch_labels, batch_sr, max_amp = self._createBatch(sample_indices)
         return batch_audio
 
-    #
-    # @staticmethod
-    # def _process_audio_array(audio_data, sr, segment_duration=4, ignore_last_padded_spec=0):
-    #     """
-    #     Process the input audio data into spectrograms, target amplitudes, and normalization factor.
-    #
-    #     Args:
-    #         audio_data (np.ndarray): Input audio data.
-    #         sr (int): Sample rate of the audio data.
-    #         segment_duration (float): Duration of each segment in seconds. Default is 4.
-    #         ignore_last_padded_spec (int): Flag to ignore the last padded spectrogram. Default is 0.
-    #
-    #     Returns:
-    #         tuple: A tuple containing spectrograms, target amplitudes, and the normalization factor.
-    #     """
-    #     # Calculate the number of samples per segment
-    #     samples_per_segment = sr * segment_duration
-    #
-    #     # Compute the total number of segments
-    #     num_segments = math.ceil(len(audio_data) / samples_per_segment)
-    #
-    #     # Pad the audio to make it evenly divisible into segments
-    #     pad_length = num_segments * samples_per_segment - len(audio_data)
-    #     audio_data = np.pad(audio_data, (0, pad_length), mode='constant').astype(np.float32)
-    #
-    #     # Initialize arrays to store spectrograms and target amplitudes
-    #     spectrograms = np.zeros((num_segments, 256, 376),
-    #                             dtype=np.float32)  # Assuming default parameters for melspectrogram
-    #     target_amplitudes = np.zeros(num_segments, dtype=np.float32)
-    #
-    #     # Generate Mel-spectrogram for each segment
-    #     for i in range(num_segments):
-    #         # Extract segment from the padded audio
-    #         start_sample = samples_per_segment * i
-    #         end_sample = start_sample + samples_per_segment
-    #         audio_segment = audio_data[start_sample:end_sample]
-    #
-    #         # Generate Mel-spectrogram for the segment
-    #         S = librosa.feature.melspectrogram(
-    #             y=audio_segment, sr=sr, n_fft=2048, hop_length=512, n_mels=256, window='hann'
-    #         )
-    #         # Convert to log scale (dB)
-    #         S_dB = librosa.power_to_db(S, ref=np.max)
-    #
-    #         # Compute target amplitude for the segment
-    #         target_amplitude = np.max(np.abs(audio_segment))
-    #
-    #         # Normalize the spectrogram
-    #         S_normalized = (S_dB - np.min(S_dB)) / (np.max(S_dB) - np.min(S_dB) + 1e-6)
-    #
-    #         # Store spectrogram and target amplitude
-    #         spectrograms[i] = S_normalized
-    #         target_amplitudes[i] = target_amplitude
-    #
-    #     # Calculate the normalization factor
-    #     max_amplitude = np.max(target_amplitudes)
-    #     min_spectrogram = np.min(spectrograms)
-    #     max_spectrogram = np.max(spectrograms)
-    #
-    #     normalization_factor = {
-    #         "max_amplitude": max_amplitude,
-    #         "min_spectrogram": min_spectrogram,
-    #         "max_spectrogram": max_spectrogram
-    #     }
-    #
-    #     if ignore_last_padded_spec:
-    #         return spectrograms[:-1], target_amplitudes[:-1], normalization_factor
-    #
-    #     return spectrograms, target_amplitudes, normalization_factor
+
 class AccentHuggingBasedDataLoader(pl.LightningDataModule):
     @staticmethod
     def add_argparse_args(parent_parser):
@@ -481,7 +413,7 @@ class AccentHuggingBasedDataLoader(pl.LightningDataModule):
     def train_dataloader(self):
         # Use the modify_batch function to add noise to the batch
         return DataLoader(AccentHuggingBased(batch_size=self.batch_size, data_type="train", SlowRun=self.SlowRun),
-                          batch_size=1, shuffle=False, num_workers=4)
+                          batch_size=1, shuffle=True, num_workers=4)
 
     def val_dataloader(self):
         return DataLoader(AccentHuggingBased(data_type="test", batch_size=self.batch_size, SlowRun=self.SlowRun),
