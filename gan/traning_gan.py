@@ -72,7 +72,7 @@ if __name__ == '__main__':
     torch.set_default_dtype(torch.float32)
     torch.manual_seed(42)
     args = parse_args()
-    wandb.init(project="AdaCONV")
+
     # checkPoint = os.path.join("NewVGGWeights", "CHECKPOINT-step=3000.ckpt")
 
     if args['checkpoint'] is not None:
@@ -88,7 +88,7 @@ if __name__ == '__main__':
         max_epochs = torch.load(checkPoint)
         model = GAN.load_from_checkpoint(checkpoint_path=checkPoint)
     # TODO - MODIFY IT SO IT WILL TAKE MAYBE THE LAST CHECKPOINT, if not , enter as a flag python -checkpoint, give PATH to CHECKPOINT, it will resume from checkpoint
-
+    wandb.init(project="AdaCONV", name=args['prefix'])
     logger = TensorBoardImageLogger(args['log_dir'], name='logs')
     # datamodule = DataModule(**args)
     datamodule = AccentHuggingBasedDataLoader(**args)
@@ -99,7 +99,7 @@ if __name__ == '__main__':
    # checkpoint_callback = ModelCheckpoint(dirpath=os.path.join(args["workarea"],args['save_dir']), filename=f'CHECKPOINT-{args["prefix"]}-{args["step"]}', save_top_k=4,
                                       #    monitor="TheShit", mode="min", every_n_train_steps=500)
     checkpoint_callback = ModelCheckpoint(dirpath=os.path.join(args["workarea"],args['save_dir']), filename=f'CHECKPOINT-{args["prefix"]}', save_last=True,
-                                          every_n_train_steps=1500)
+                                          every_n_train_steps=1000)
     wandb.watch(model)
     # Move model to cuda
     trainer = pl.Trainer(max_epochs=args['epochs'], callbacks=[checkpoint_callback, lr_monitor], logger=logger,

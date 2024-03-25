@@ -22,7 +22,7 @@ sys.path.append('lib_')
 class AccentHuggingBased(Dataset):
     def __init__(self, data_type="train", batch_size=2, SlowRun=True, limit_samples=5000, enable_multiprocessing=True,
                  TzlilTrain=False):
-        self.batch_size = batch_size
+        self.batch_size = batch_size if batch_size > 80 else 140
         #Set self.log_file to be a new file name dataloader_log.txt
         self.log_file = "dataloader_log.txt"
         # Load the dataset

@@ -311,13 +311,13 @@ class GAN(pl.LightningModule):
             torch.cuda.empty_cache()
             # Collect the garbage
             gc.collect()
-            if self.global_step % 5000 == 0:
-                # Save the weights for the generator and the discriminator
-                current_dir = os.getcwd()
-                torch.save(self.generator.state_dict(), os.path.join(current_dir, "NewVGGWeights",
-                                                                     f'GeneratorWeights-{self.global_step}-{self.prefix}.pth'))
-                torch.save(self.discriminator.state_dict(), os.path.join(current_dir, "NewVGGWeights",
-                                                                         f'DiscriminatorWeights-{self.global_step}-{self.prefix}.pth'))
+            # if self.global_step % 5000 == 0:
+            #     # Save the weights for the generator and the discriminator
+            #     current_dir = os.getcwd()
+            #     torch.save(self.generator.state_dict(), os.path.join(current_dir, "NewVGGWeights",
+            #                                                          f'GeneratorWeights-{self.global_step}-{self.prefix}.pth'))
+            #     torch.save(self.discriminator.state_dict(), os.path.join(current_dir, "NewVGGWeights",
+            #                                                              f'DiscriminatorWeights-{self.global_step}-{self.prefix}.pth'))
         else:
             if self.global_step % 300 == 0:
                 # Save the weights for the generator and the discriminator
