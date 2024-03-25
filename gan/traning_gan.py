@@ -109,7 +109,7 @@ if __name__ == '__main__':
         dirpath=os.path.join(args["workarea"], args['save_dir']),
         filename=f'CHECKPOINT-{args["prefix"]}',
         save_last=True,
-        save_top_k=None,
+        save_top_k=1,
         every_n_epochs =1  # Save at the end of every epoch
     )
     wandb.watch(model)
