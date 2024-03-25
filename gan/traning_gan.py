@@ -110,7 +110,7 @@ if __name__ == '__main__':
         filename=f'CHECKPOINT-{args["prefix"]}',
         save_last=True,
         save_top_k=None,
-        every_n_val_epochs=1  # Save at the end of every epoch
+        every_n_epochs =1  # Save at the end of every epoch
     )
     wandb.watch(model)
     # Move model to cuda
