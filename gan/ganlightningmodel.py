@@ -173,30 +173,32 @@ class GAN(pl.LightningModule):
 
 
         # Check if the absolute difference between the current generator loss and the previous generator loss is greater than 700
-        if torch.abs(g_loss - self.old_loss) > 400:
-            # Save the inputs, style, and generated images
-            for idx, (input_img, style_img, generated_img) in enumerate(zip(inputs, styles, self.generated_imgs)):
-                # Normalize images
-                input_img_norm = F.normalize(input_img, [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-                style_img_norm = F.normalize(style_img, [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-                generated_img_norm = F.normalize(generated_img, [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        try:
+            if torch.abs(g_loss - self.old_loss) > 0.002:
+                # Save the inputs, style, and generated images
+                for idx, (input_img, style_img, generated_img) in enumerate(zip(inputs, styles, self.generated_imgs)):
+                    # Normalize images
+                    input_img_norm = F.normalize(input_img, [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                    style_img_norm = F.normalize(style_img, [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                    generated_img_norm = F.normalize(generated_img, [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 
-                # Convert tensors to PIL images
-                input_img_pil = torchvision.transforms.ToPILImage()(input_img_norm.cpu().detach().squeeze(0))
-                style_img_pil = torchvision.transforms.ToPILImage()(style_img_norm.cpu().detach().squeeze(0))
-                generated_img_pil = torchvision.transforms.ToPILImage()(generated_img_norm.cpu().detach().squeeze(0))
+                    # Convert tensors to PIL images
+                    input_img_pil = torchvision.transforms.ToPILImage()(input_img_norm.cpu().detach().squeeze(0))
+                    style_img_pil = torchvision.transforms.ToPILImage()(style_img_norm.cpu().detach().squeeze(0))
+                    generated_img_pil = torchvision.transforms.ToPILImage()(generated_img_norm.cpu().detach().squeeze(0))
 
-                # Concatenate images
-                concat_img = Image.new('RGB', (
-                input_img_pil.width + style_img_pil.width + generated_img_pil.width, input_img_pil.height))
-                concat_img.paste(input_img_pil, (0, 0))
-                concat_img.paste(style_img_pil, (input_img_pil.width, 0))
-                concat_img.paste(generated_img_pil, (input_img_pil.width + style_img_pil.width, 0))
+                    # Concatenate images
+                    concat_img = Image.new('RGB', (
+                    input_img_pil.width + style_img_pil.width + generated_img_pil.width, input_img_pil.height))
+                    concat_img.paste(input_img_pil, (0, 0))
+                    concat_img.paste(style_img_pil, (input_img_pil.width, 0))
+                    concat_img.paste(generated_img_pil, (input_img_pil.width + style_img_pil.width, 0))
 
-                # Save concatenated image
-                concat_img_path = f"images/concat_{batch_idx}_{idx}_g_loss_{g_loss}.jpg"
-                concat_img.save(concat_img_path)
-
+                    # Save concatenated image
+                    concat_img_path = f"images/concat_{batch_idx}_{idx}_g_loss_{g_loss}.jpg"
+                    concat_img.save(concat_img_path)
+        except:
+            print("Error in saving images")
 
         if batch_idx % 20:
             log_input = inputs[0, 0, :, :]
