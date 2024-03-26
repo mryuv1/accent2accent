@@ -7,6 +7,8 @@
     <list default="true" id="921903bc-1451-4466-bd5a-eb1e57ba75a4" name="Changes" comment="Normalize, with new Weights, hopefuly working">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gan/ganlightningmodel.py" beforeDir="false" afterPath="$PROJECT_DIR$/gan/ganlightningmodel.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib_/DataLoader.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib_/DataLoader.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib_/adaconv/adaconv_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib_/adaconv/adaconv_model.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -195,7 +197,7 @@
       <workItem from="1708960981510" duration="62897000" />
       <workItem from="1711006390057" duration="507000" />
       <workItem from="1711008449888" duration="122000" />
-      <workItem from="1711008591848" duration="37102000" />
+      <workItem from="1711008591848" duration="40173000" />
     </task>
     <task id="LOCAL-00001" summary="talla">
       <option name="closed" value="true" />
@@ -317,7 +319,23 @@
       <option name="project" value="LOCAL" />
       <updated>1711436002699</updated>
     </task>
-    <option name="localTasksCounter" value="16" />
+    <task id="LOCAL-00016" summary="Normalize, with new Weights, hopefuly working">
+      <option name="closed" value="true" />
+      <created>1711441686559</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1711441686559</updated>
+    </task>
+    <task id="LOCAL-00017" summary="Normalize, with new Weights, hopefuly working">
+      <option name="closed" value="true" />
+      <created>1711441708177</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1711441708177</updated>
+    </task>
+    <option name="localTasksCounter" value="18" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

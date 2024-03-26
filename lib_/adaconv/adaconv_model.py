@@ -18,9 +18,9 @@ class AdaConvModel(nn.Module):
         parser.add_argument('--kernel-size', type=int, default=3, help='The size of the predicted kernels.')
         return parser
 
-    def __init__(self, style_size, style_channels, kernel_size):
+    def __init__(self, style_size, style_channels, kernel_size,VGGish=True):
         super().__init__()
-        self.encoder = VGGEncoder(TzlilTrain=False)
+        self.encoder = VGGEncoder(TzlilTrain=False,VGGish=VGGish)
         style_in_shape = (self.encoder.out_channels, style_size // self.encoder.scale_factor, style_size // self.encoder.scale_factor)
         #TODO CHECK - CHANGE THE SECOND DIMENSION
         style_in_shape = (self.encoder.out_channels, style_size // self.encoder.scale_factor, 376 // self.encoder.scale_factor)

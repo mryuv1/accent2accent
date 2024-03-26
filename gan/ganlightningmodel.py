@@ -24,6 +24,7 @@ import os
 import wandb
 from discriminator import Discriminator
 from PIL import Image
+import librosa
 
 class GAN(pl.LightningModule):
     @staticmethod
@@ -140,7 +141,17 @@ class GAN(pl.LightningModule):
     def adversarial_loss(self, y_hat, y):
         return F.binary_cross_entropy(y_hat, y)
 
+    def convert_spec_to_audio(self, spectrogram, sr, max_amp):
+        # Unnormalize the spectrogram
+        spectrogram = (spectrogram * (self.content_std + 1e-6)) + self.content_mean
 
+        # Inverse the spectrogram to obtain audio
+        audio = librosa.feature.inverse.mel_to_audio(spectrogram, sr=sr, n_fft=2048, hop_length=512, power=2.0)
+
+        # Normalize the audio
+        audio = audio * max_amp
+
+        return audio
     def training_step(self, batch, batch_idx,eps=1e-6):
         inputs = batch["content"].squeeze(0)
         styles = batch["style"].squeeze(0)
@@ -220,6 +231,11 @@ class GAN(pl.LightningModule):
             images = wandb.Image(image_array, caption="Left: Input, Middle: Output, Right: Style")
 
             wandb.log({"examples": images})
+            # Convert spectrogram to audio
+            audio = self.convert_spec_to_audio(self.generated_imgs[0].cpu().detach().numpy(), batch["sample_rate"][0],
+                                               batch["max_amplitudes"][0])
+            # Log audio to wandb
+            wandb.log({"Generated Audio": wandb.Audio(audio, sample_rate=batch["sample_rate"][0])})
         if self.prefix == "golden":
             loss_of_folling_descriminator = 0.0001 * self.adversarial_loss(
                 self.discriminator(self.generated_imgs.detach()), torch.ones(inputs.size(0), 1).type_as(inputs))
@@ -349,3 +365,8 @@ class GAN(pl.LightningModule):
             os.remove(os.path.join("NewVGGWeights", discriminator_files[0]))
         print("The generator weights are", generator_files[-1], "The discriminator weights are",
               discriminator_files[-1])
+
+#read the image test.jpg into an array
+img = Image.open("test.jpg")
+img_array = np.array(img)
+#convert the array into a tensor

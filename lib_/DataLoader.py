@@ -256,8 +256,11 @@ class AccentHuggingBased(Dataset):
 
         return {
             "content": torch.stack(content),
-            "style": torch.stack(style)
-        }, torch.tensor(batch_labels), torch.tensor(batch_sr), torch.tensor(batch_max_amplitudes)
+            "style": torch.stack(style),
+            "labels": torch.tensor(batch_labels),
+            "sample_rate": torch.tensor(batch_sr),
+            "max_amplitudes": torch.tensor(batch_max_amplitudes)
+        }
 
     def _createBatch_Normalization(self, sample_indices):
         batch_audio = []
@@ -378,7 +381,8 @@ class AccentHuggingBased(Dataset):
         start_idx = idx * self.batch_size
         end_idx = min((idx + 1) * self.batch_size, len(self.dataset))
         sample_indices = range(start_idx, end_idx)
-        batch_audio, batch_labels, batch_sr, max_amp = self._createBatch(sample_indices)
+        batch_audio = self._createBatch(sample_indices)
+        #add to the batch_audio dictonary the other values with matching keys
         return batch_audio
 
 
