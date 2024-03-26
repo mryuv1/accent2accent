@@ -49,6 +49,8 @@ class GAN(pl.LightningModule):
         parser.add_argument('--fm-weight', type=float, default=1.0, help="The weight of the feature matching loss")
         parser.add_argument('--AdversionalLossWeight', type=float, default=0.0001,
                             help="The weight of the adversarial loss")
+        parser.add_argument('--vggish', type=bool, default=True,
+                            help="The weight of the adversarial loss")
 
         # Optimizer
         parser.add_argument('--lr', type=float, default=0.0001, help="The learning rate")
@@ -103,7 +105,7 @@ class GAN(pl.LightningModule):
         if model_type == 'adain':
             self.generator = AdaINModel(alpha)
         elif model_type == 'adaconv':
-            self.generator = AdaConvModel(style_size, style_channels, kernel_size)
+            self.generator = AdaConvModel(style_size, style_channels, kernel_size,VGGish=self.hparams.vggish)
         else:
             raise ValueError('model_type')
         self.GAN_log = "GAN_log.txt"
@@ -232,7 +234,7 @@ class GAN(pl.LightningModule):
 
             wandb.log({"examples": images})
             # Convert spectrogram to audio
-            audio = self.convert_spec_to_audio(self.generated_imgs[0].cpu().detach().numpy(), batch["sample_rate"][0],
+            audio = self.convert_spec_to_audio(log_output.cpu().detach().numpy(), batch["sample_rate"][0],
                                                batch["max_amplitudes"][0])
             # Log audio to wandb
             wandb.log({"Generated Audio": wandb.Audio(audio, sample_rate=batch["sample_rate"][0])})
