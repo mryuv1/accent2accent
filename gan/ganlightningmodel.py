@@ -365,8 +365,3 @@ class GAN(pl.LightningModule):
             os.remove(os.path.join("NewVGGWeights", discriminator_files[0]))
         print("The generator weights are", generator_files[-1], "The discriminator weights are",
               discriminator_files[-1])
-
-#read the image test.jpg into an array
-img = Image.open("test.jpg")
-img_array = np.array(img)
-#convert the array into a tensor
