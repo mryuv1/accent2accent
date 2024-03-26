@@ -49,13 +49,17 @@ def LoadVGG19(path_to_weights=None,current_directory=None,TzlilSuccess=False,Tzl
     return vgg19
 
 class VGGEncoder(nn.Module):
-    def __init__(self, path_to_weights=None,current_directory=None,normalize=True, post_activation=True, TzlilSucces=False, TzlilTrain=False, num_classes=2):
+    def __init__(self, path_to_weights=None,current_directory=None,normalize=True, post_activation=True, TzlilSucces=False, TzlilTrain=False, num_classes=2,VGGish=True):
         super().__init__()
         if current_directory is None:
             current_directory = os.path.dirname(__file__)
         if path_to_weights is None:
             path_to_weights = os.path.join(current_directory, "vgg.pth")
-        self.vgg19 = LoadVGG19(path_to_weights,current_directory, TzlilSucces, TzlilTrain, num_classes)
+        self.VGGish = VGGish
+        if VGGish:
+            self.vgg19 = LoadVGG19(path_to_weights,current_directory, TzlilSucces, TzlilTrain, num_classes)
+        else:
+            self.vgg19 = models.vgg19(pretrained=True)
         #self.vgg19 = torchvggish.vggish()
        # self.vgg19 = models.vgg19(pretrained=True)
        # self.vgg19.features[0] = torch.nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1)
@@ -85,8 +89,14 @@ class VGGEncoder(nn.Module):
         self.freeze()
 
     def forward(self, xs):
-        #remove the first channel
         xs = xs.squeeze(0)
+        #remove the first channel
+        if not self.VGGish:
+            print(xs.shape)
+            #Check if each image has 3 channels, if have 1 channel, add 2 more
+            if xs.shape[1] == 1:
+                xs = torch.cat([xs, xs, xs], dim=1)
+            print(xs.shape)
         xs = self.normalize(xs)
         xs.to(torch.float32)
         features = []

@@ -65,6 +65,22 @@ def parse_args():
     parser.formatter_class = argparse.ArgumentDefaultsHelpFormatter
     return vars(parser.parse_args())
 
+import os
+
+def find_with_prefix(directory, prefix):
+    matched_files = []
+    for root, _, files in os.walk(directory):
+        for file in files:
+            if file.startswith(prefix):
+                matched_files.append(os.path.join(root, file))
+    matched_files.sort()
+    if len(matched_files)>=2:
+        return matched_files[-2]
+    else:
+        return matched_files[-1]
+
+
+
 
 if __name__ == '__main__':
     os.environ['HF_HOME'] = "dataset"
@@ -81,6 +97,8 @@ if __name__ == '__main__':
         checkPoint = None
     #Check if checkpoint exists in the path
     if os.path.exists(checkPoint):
+       # checkPoint = find_with_prefix(os.path.join(args["workarea"],args["save_dir"]), args['checkpoint'])
+        #:wcheckPoint = os.path.join(args["workarea"], checkPoint)
         print("Checkpoint exists", checkPoint)
     else:
         checkPoint = None
@@ -105,12 +123,23 @@ if __name__ == '__main__':
                                       #    monitor="TheShit", mode="min", every_n_train_steps=500)
     # checkpoint_callback = ModelCheckpoint(dirpath=os.path.join(args["workarea"],args['save_dir']), filename=f'CHECKPOINT-{args["prefix"]}', save_last=True,
     #                                       every_n_train_steps=1000)
-    checkpoint_callback = ModelCheckpoint(
-        dirpath=os.path.join(args["workarea"], args['save_dir']),
-        filename=f'CHECKPOINT-{args["prefix"]}',
-        save_top_k=1,
-        every_n_epochs =1  # Save at the end of every epoch
-    )
+    if checkPoint is not None:
+        checkpoint_callback = ModelCheckpoint(
+            dirpath=os.path.join(args["workarea"], args['save_dir']),
+            filename=checkPoint.split("/")[-1].split(".")[0],
+            save_last=True,
+            every_n_epochs=1  # Save at the end of every epoch
+        )
+        print("HEY THERE IM LOADING THIS ", checkPoint.split("/")[-1])
+    else:
+        checkpoint_callback = ModelCheckpoint(
+            dirpath=os.path.join(args["workarea"], args['save_dir']),
+            filename=f'CHECKPOINT-{args["prefix"]}',
+
+            save_last=True,
+            every_n_epochs=1  # Save at the end of every epoch
+        )
+
     wandb.watch(model)
     # Move model to cuda
     trainer = pl.Trainer(max_epochs=args['epochs'], callbacks=[checkpoint_callback, lr_monitor], logger=logger,

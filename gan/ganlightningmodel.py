@@ -46,7 +46,7 @@ class GAN(pl.LightningModule):
         parser.add_argument('--num-channels', type=int, default=1, help="The number of channels in the input image")
         parser.add_argument('--alpha', type=float, default=1.0, help="The alpha parameter for AdaIN")
         parser.add_argument('--fm-weight', type=float, default=1.0, help="The weight of the feature matching loss")
-        parser.add_argument('--AdversionalLossWeight', type=float, default=0.001,
+        parser.add_argument('--AdversionalLossWeight', type=float, default=0.0001,
                             help="The weight of the adversarial loss")
 
         # Optimizer
@@ -225,7 +225,7 @@ class GAN(pl.LightningModule):
             loss_of_folling_descriminator = self.hparams.AdversionalLossWeight * self.adversarial_loss(
                 self.discriminator(self.generated_imgs.detach()), torch.ones(inputs.size(0), 1).type_as(inputs))
         # loss of the discriminator being fooled by the generated images
-        if g_loss < 30:
+        if g_loss < 0.002:
             g_loss += loss_of_folling_descriminator
             print("g loss:", g_loss, "content loss:", content_loss,
                   "style loss:", style_loss, "Fooling discriminator:",
