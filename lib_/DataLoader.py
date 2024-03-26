@@ -169,6 +169,32 @@ class AccentHuggingBased(Dataset):
 
         return spectrograms, target_amplitudes
 
+    def compute_centroid_torch(self, spectrogram):
+        # Compute the frequency axis
+        frequencies = torch.arange(spectrogram.shape[0], dtype=torch.float32)
+
+        # Compute the centroid
+        centroid = torch.sum(frequencies[:, None] * spectrogram, dim=0) / (
+                    torch.sum(spectrogram, dim=0) + torch.finfo(torch.float32).eps)
+
+        return centroid
+
+    def compute_abs_centroid_difference_torch(self, spectrograms1, spectrograms2):
+        if len(spectrograms1) != len(spectrograms2):
+            raise ValueError("Number of spectrograms must be the same for both arrays.")
+
+        abs_differences = []
+        for spec1, spec2 in zip(spectrograms1, spectrograms2):
+            # Compute centroids
+            centroid1 = self.compute_centroid_torch(spec1)
+            centroid2 = self.compute_centroid_torch(spec2)
+
+            # Compute absolute difference
+            abs_difference = torch.abs(centroid1 - centroid2)
+            abs_differences.append(abs_difference)
+
+        return torch.stack(abs_differences)
+
     def _createBatch(self, sample_indices):
         batch_audio = []
         batch_labels = []
@@ -254,10 +280,14 @@ class AccentHuggingBased(Dataset):
             all_count += len(spectrograms)
             label_count[label_number] = label_count.get(label_number, 0) + len(spectrograms)
 
+        content = torch.stack(content)
+        style = torch.stack(style)
+        diffs = self.compute_abs_centroid_difference(content, style)
         return {
             "content": torch.stack(content),
             "style": torch.stack(style),
             "labels": torch.tensor(batch_labels),
+            "similarity": diffs,
             "sample_rate": torch.tensor(batch_sr),
             "max_amplitudes": torch.tensor(batch_max_amplitudes)
         }
@@ -363,8 +393,9 @@ class AccentHuggingBased(Dataset):
             label_count[label_number] = label_count.get(label_number, 0) + len(spectrograms)
 
         return {
-            "content": torch.stack(content),
-            "style": torch.stack(style)
+            "content": content,
+            "style": style,
+            "ratio": diffs
         }, torch.tensor(batch_labels), torch.tensor(batch_sr), torch.tensor(
             batch_max_amplitudes), batch_norm_factors
 

@@ -7,6 +7,9 @@
     <list default="true" id="921903bc-1451-4466-bd5a-eb1e57ba75a4" name="Changes" comment="Normalize, with new Weights, hopefuly working">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gan/ganlightningmodel.py" beforeDir="false" afterPath="$PROJECT_DIR$/gan/ganlightningmodel.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gan/traning_gan.py" beforeDir="false" afterPath="$PROJECT_DIR$/gan/traning_gan.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib_/DataLoader.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib_/DataLoader.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib_/lightning/lightningmodel.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib_/lightning/lightningmodel.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -50,6 +53,7 @@
   "keyToString": {
     "Python.traning_gan.executor": "Run",
     "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "git-widget-placeholder": "yuval__comp",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -72,7 +76,6 @@
   <component name="RunManager" selected="Python.traning_gan">
     <configuration name="ganlightningmodel" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="accent2accent" />
-      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
@@ -95,7 +98,6 @@
     </configuration>
     <configuration name="new_dataset" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="accent2accent" />
-      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
@@ -118,7 +120,6 @@
     </configuration>
     <configuration name="traning_gan" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="accent2accent" />
-      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
@@ -141,7 +142,6 @@
     </configuration>
     <configuration name="vgg" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="accent2accent" />
-      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
@@ -372,10 +372,10 @@
     </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/accent2accent$new_dataset.coverage" NAME="new_dataset Coverage Results" MODIFIED="1709209933514" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
-    <SUITE FILE_PATH="coverage/accent2accent$vgg.coverage" NAME="vgg Coverage Results" MODIFIED="1709719332715" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
-    <SUITE FILE_PATH="coverage/accent2accent$traning_gan.coverage" NAME="traning_gan Coverage Results" MODIFIED="1711011201098" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/gan" />
     <SUITE FILE_PATH="coverage/accent2accent$train_only_adaConv.coverage" NAME="train_only_adaConv Coverage Results" MODIFIED="1708520370568" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/gan" />
     <SUITE FILE_PATH="coverage/accent2accent$ganlightningmodel.coverage" NAME="ganlightningmodel Coverage Results" MODIFIED="1709719113722" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/gan" />
+    <SUITE FILE_PATH="coverage/accent2accent$traning_gan.coverage" NAME="traning_gan Coverage Results" MODIFIED="1709719508964" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/gan" />
+    <SUITE FILE_PATH="coverage/accent2accent$new_dataset.coverage" NAME="new_dataset Coverage Results" MODIFIED="1709209933514" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
+    <SUITE FILE_PATH="coverage/accent2accent$vgg.coverage" NAME="vgg Coverage Results" MODIFIED="1709719332715" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
   </component>
 </project>

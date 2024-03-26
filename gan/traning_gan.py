@@ -86,7 +86,7 @@ if __name__ == '__main__':
     os.environ['HF_HOME'] = "dataset"
     # set torch seed as 42
     torch.set_default_dtype(torch.float32)
-    torch.manual_seed(42)
+    torch.manual_seed(43)
     args = parse_args()
 
     # checkPoint = os.path.join("NewVGGWeights", "CHECKPOINT-step=3000.ckpt")

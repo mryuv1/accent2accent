@@ -93,6 +93,7 @@ class LightningModel(pl.LightningModule):
 
     def shared_step(self, batch, step):
         content, style = batch['content'], batch['style']
+        similarity = batch['similarity']
         output, embeddings = self.model(content, style, return_embeddings=True)
         content_loss, style_loss = self.loss(embeddings)
 
@@ -102,6 +103,7 @@ class LightningModel(pl.LightningModule):
         # Log accuracy and loss for visualization
         self.log(rf'{step}/loss_style', style_loss.item(), prog_bar=True, on_step=True, on_epoch=True)
         self.log(rf'{step}/loss_content', content_loss.item(), prog_bar=True,on_step=True, on_epoch=True)
+        self.log(rf'{step}/loss_content', similarity.item(), prog_bar=True, on_step=True, on_epoch=True)
 
         wandb.log({"Content Loss": content_loss.item(), "Style Loss": style_loss.item()})
         # Return output only for validation step

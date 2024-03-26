@@ -116,7 +116,7 @@ class GAN(pl.LightningModule):
         self.style_mean = 0
         self.content_std = 0
         self.style_std = 0
-    #  self.init_weights()
+        self.init_weights()
 
     def forward(self, content, style):
         # Define the forward pass for the gan
