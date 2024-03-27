@@ -243,6 +243,7 @@ class AccentHuggingBased(Dataset):
         content = batch_audio[:max_size]
         style = zero_audio[:max_size]
         batch_labels += zero_labels
+        batch_max_amplitudes += zero_max_amplitudes
         while not content:
             idx = random.randint(0, len(self.dataset) - 1)
             label_number = self.get_label_number(self.dataset[idx]['labels'])
@@ -282,10 +283,10 @@ class AccentHuggingBased(Dataset):
 
         content = torch.stack(content)
         style = torch.stack(style)
-        diffs = self.compute_abs_centroid_difference(content, style)
+        diffs = self.compute_abs_centroid_difference_torch(content, style)
         return {
-            "content": torch.stack(content),
-            "style": torch.stack(style),
+            "content": content,
+            "style": style,
             "labels": torch.tensor(batch_labels),
             "similarity": diffs,
             "sample_rate": torch.tensor(batch_sr),

@@ -49,8 +49,7 @@ class GAN(pl.LightningModule):
         parser.add_argument('--fm-weight', type=float, default=1.0, help="The weight of the feature matching loss")
         parser.add_argument('--AdversionalLossWeight', type=float, default=0.0001,
                             help="The weight of the adversarial loss")
-        parser.add_argument('--vggish', type=bool, default=True,
-                            help="The weight of the adversarial loss")
+
 
         # Optimizer
         parser.add_argument('--lr', type=float, default=0.0001, help="The learning rate")
@@ -67,7 +66,7 @@ class GAN(pl.LightningModule):
                  style_size, style_channels, kernel_size,
                  style_loss, style_weight,
                  content_loss, content_weight,
-                 lr, b1, b2, prefix="prefix", PreTrainAdaConv=True,
+                 lr, b1, b2, prefix="prefix", PreTrainAdaConv=True, VGGish=True,
                  **_):
         super().__init__()
         self.save_hyperparameters()
@@ -79,6 +78,7 @@ class GAN(pl.LightningModule):
         self.train_cntr = 0
 
         self.prefix = prefix
+        self.VGGish = VGGish
         # Style loss
         if style_loss == 'mm':
             self.style_loss = MomentMatchingStyleLoss()
@@ -105,7 +105,7 @@ class GAN(pl.LightningModule):
         if model_type == 'adain':
             self.generator = AdaINModel(alpha)
         elif model_type == 'adaconv':
-            self.generator = AdaConvModel(style_size, style_channels, kernel_size,VGGish=self.hparams.vggish)
+            self.generator = AdaConvModel(style_size, style_channels, kernel_size,VGGish=self.VGGish)
         else:
             raise ValueError('model_type')
         self.GAN_log = "GAN_log.txt"
@@ -116,7 +116,6 @@ class GAN(pl.LightningModule):
         self.style_mean = 0
         self.content_std = 0
         self.style_std = 0
-        self.init_weights()
 
     def forward(self, content, style):
         # Define the forward pass for the gan
@@ -145,15 +144,29 @@ class GAN(pl.LightningModule):
 
     def convert_spec_to_audio(self, spectrogram, sr, max_amp):
         # Unnormalize the spectrogram
+        print("The spectogram shape is ", spectrogram.shape)
+        with open("audio2.txt", "w") as f:
+            for i in range(spectrogram.shape[1]):
+                for j in range(spectrogram.shape[2]):
+                    f.write(str(spectrogram[0][i][j]) + "\n")
         spectrogram = (spectrogram * (self.content_std + 1e-6)) + self.content_mean
-
+        spectrogram = spectrogram.cpu().detach().numpy()
+        sr = sr[0].cpu().detach().numpy()
+        max_amp = max_amp[0].cpu().detach().numpy()
+        #Write the spectogram values as a long vector to a file called audio.txt
+        with open("audio.txt", "w") as f:
+            for i in range(spectrogram.shape[1]):
+                for j in range(spectrogram.shape[2]):
+                    f.write(str(spectrogram[0][i][j]) + "\n")
         # Inverse the spectrogram to obtain audio
         audio = librosa.feature.inverse.mel_to_audio(spectrogram, sr=sr, n_fft=2048, hop_length=512, power=2.0)
 
         # Normalize the audio
         audio = audio * max_amp
+        audio = audio.squeeze(0).squeeze(0)
 
         return audio
+
     def training_step(self, batch, batch_idx,eps=1e-6):
         inputs = batch["content"].squeeze(0)
         styles = batch["style"].squeeze(0)
@@ -173,7 +186,9 @@ class GAN(pl.LightningModule):
         # Train the generator
         optimizer_g.zero_grad()
         self.generated_imgs, embeddings = self.generator(inputs, styles, return_embeddings=True)
-
+        #Convert all the NaNs values to 0 in the generated images and embeddings
+        self.generated_imgs = torch.nan_to_num(self.generated_imgs, nan=0.0)
+        embeddings = torch.nan_to_num(embeddings, nan=0.0)
         # print(f'generated images shape is: {self.generated_imgs.shape}')
 
         # Compute generator loss
@@ -234,10 +249,10 @@ class GAN(pl.LightningModule):
 
             wandb.log({"examples": images})
             # Convert spectrogram to audio
-            audio = self.convert_spec_to_audio(log_output.cpu().detach().numpy(), batch["sample_rate"][0],
+            audio = self.convert_spec_to_audio(log_output, batch["sample_rate"][0],
                                                batch["max_amplitudes"][0])
             # Log audio to wandb
-            wandb.log({"Generated Audio": wandb.Audio(audio, sample_rate=batch["sample_rate"][0])})
+            wandb.log({"Generated Audio": wandb.Audio(audio, sample_rate=batch["sample_rate"][0][0].cpu().detach().numpy())})
         if self.prefix == "golden":
             loss_of_folling_descriminator = 0.0001 * self.adversarial_loss(
                 self.discriminator(self.generated_imgs.detach()), torch.ones(inputs.size(0), 1).type_as(inputs))
