@@ -2,13 +2,16 @@ from argparse import ArgumentParser
 from math import sqrt
 from statistics import mean
 import gc
+import numpy as np
 from typing import Any
-
+import noisereduce as nr
 import pytorch_lightning as pl
 from pytorch_lightning.utilities.types import STEP_OUTPUT
 import sys
-
+import pickle
 sys.path.append('lib_')
+sys.path.append('../lib_')
+sys.path.append('..')
 import wandb
 import torch
 import torch.nn.functional as F
@@ -116,6 +119,7 @@ class GAN(pl.LightningModule):
         self.style_mean = 0
         self.content_std = 0
         self.style_std = 0
+        #Load the weights to the self.generator model from werights.pth
 
     def forward(self, content, style):
         # Define the forward pass for the gan
@@ -143,27 +147,31 @@ class GAN(pl.LightningModule):
         return F.binary_cross_entropy(y_hat, y)
 
     def convert_spec_to_audio(self, spectrogram, sr, max_amp):
+
         # Unnormalize the spectrogram
         print("The spectogram shape is ", spectrogram.shape)
-        with open("audio2.txt", "w") as f:
-            for i in range(spectrogram.shape[1]):
-                for j in range(spectrogram.shape[2]):
-                    f.write(str(spectrogram[0][i][j]) + "\n")
+
         spectrogram = (spectrogram * (self.content_std + 1e-6)) + self.content_mean
+        spectrogram = torch.nan_to_num(spectrogram, nan=-80.0)
         spectrogram = spectrogram.cpu().detach().numpy()
         sr = sr[0].cpu().detach().numpy()
         max_amp = max_amp[0].cpu().detach().numpy()
-        #Write the spectogram values as a long vector to a file called audio.txt
-        with open("audio.txt", "w") as f:
-            for i in range(spectrogram.shape[1]):
-                for j in range(spectrogram.shape[2]):
-                    f.write(str(spectrogram[0][i][j]) + "\n")
-        # Inverse the spectrogram to obtain audio
-        audio = librosa.feature.inverse.mel_to_audio(spectrogram, sr=sr, n_fft=2048, hop_length=512, power=2.0)
+        #Save the spectogram as a pickle file, put the max_amp and sr in filename
+        with open(f"audio_{max_amp}_{sr}_{self.content_mean}_{self.content_std}.pkl", 'wb') as f:
+            pickle.dump(spectrogram, f)
 
-        # Normalize the audio
-        audio = audio * max_amp
-        audio = audio.squeeze(0).squeeze(0)
+        y = librosa.feature.inverse.mel_to_audio(spectrogram, sr=sr)
+
+        # Normalize the audio signal
+        normalization_factor = max_amp / np.max(np.abs(y))
+        y_normalized = y * normalization_factor
+        # Reduce noise
+        #print the size of the numpy array y_normalized
+        y_normalized = y_normalized.squeeze(0)
+        print("The size of the numpy array is ", y_normalized.shape)
+        #Convert the y_noramlized from (1,1,192000) numpy array to (1,192000) numpy array
+        y_normalized = np.nan_to_num(y_normalized, nan=0.0)
+        audio = nr.reduce_noise(y_normalized, sr=sr)
 
         return audio
 
@@ -183,13 +191,10 @@ class GAN(pl.LightningModule):
         # Access optimizers
         optimizer_g, optimizer_d = self.optimizers()
 
-        # Train the generator
+        # Train the generatorX
         optimizer_g.zero_grad()
         self.generated_imgs, embeddings = self.generator(inputs, styles, return_embeddings=True)
-        #Convert all the NaNs values to 0 in the generated images and embeddings
-        self.generated_imgs = torch.nan_to_num(self.generated_imgs, nan=0.0)
-        embeddings = torch.nan_to_num(embeddings, nan=0.0)
-        # print(f'generated images shape is: {self.generated_imgs.shape}')
+
 
         # Compute generator loss
         content_loss, style_loss = self.generator_loss(embeddings)
@@ -228,7 +233,8 @@ class GAN(pl.LightningModule):
         except:
             print("Error in saving images")
 
-        if batch_idx % 20:
+        # if batch_idx % 1:
+        if 1==1:
             log_input = inputs[0, 0, :, :]
             log_style = styles[0, 0, :, :]
             log_output = self.generated_imgs[0, 0, :, :]
@@ -382,3 +388,55 @@ class GAN(pl.LightningModule):
             os.remove(os.path.join("NewVGGWeights", discriminator_files[0]))
         print("The generator weights are", generator_files[-1], "The discriminator weights are",
               discriminator_files[-1])
+
+def review_audio(spec, sr, max_amp, mean,std):
+    specto = spec
+    # Unnormalize the spectrogram
+    print("The spectogram shape is ", specto.shape)
+    #Normalize the specto   to be in [-1,1]
+    mean = torch.mean(specto)
+    std = torch.std(specto)
+    spectro = (specto - mean) / (std + 1e-6)
+
+  #  specto = (specto * (std )) + mean
+   # specto = torch.nan_to_num(specto, nan=-80.0)
+    specto = specto.cpu().detach().numpy()
+    sr = sr.cpu().detach().numpy()
+    max_amp = max_amp.cpu().detach().numpy()
+    print("The spectro is ", specto)
+    specto.squeeze(0).squeeze(0)
+    print(sr)
+    y = librosa.feature.inverse.mel_to_audio(specto, sr=sr)
+    print(y)
+    print("SUM OF Y", y)
+    # Normalize the audio signal
+#    normalization_factor = max_amp / np.max(np.abs(y))
+   # y_normalized = y * normalization_factor
+    # Reduce noise
+    #print the size of the numpy array y_normalized
+    y_normalized = y
+    y_normalized = y_normalized.squeeze(0)
+    y_normalized = np.nan_to_num(y_normalized, nan=0.0)
+    print("Sum is ", np.sum(y_normalized))
+    return y_normalized
+    print("The size of the numpy array is ", y_normalized.shape)
+    #Convert the y_noramlized from (1,1,192000) numpy array to (1,192000) numpy array
+    y_normalized = np.nan_to_num(y_normalized, nan=0.0)
+    audio = nr.reduce_noise(y_normalized, sr=sr)
+
+    return audio
+
+with open("gan/audio.pkl", "rb") as f:
+    spectrogram = pickle.load(f)
+spectrogram = torch.tensor(spectrogram)
+for i in range(len(spectrogram)):
+    for j in range(len(spectrogram[0])):
+        print(spectrogram[i][j])
+sr = torch.tensor(48000)
+max_amp = torch.tensor(0.0609641969203949)
+mean = torch.tensor(-62.5935)
+std = torch.tensor(18.3705)
+audio = review_audio(spectrogram, sr, max_amp, mean,std)
+#convert audio to wav file
+print(audio)
+librosa.output.write_wav("audio.wav", audio, 48000)
