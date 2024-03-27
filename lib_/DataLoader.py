@@ -1,5 +1,6 @@
 import random
 import torch
+import torch.nn.functional as F
 import pickle
 from datasets import load_dataset, concatenate_datasets
 from torch.utils.data import DataLoader
@@ -195,6 +196,28 @@ class AccentHuggingBased(Dataset):
 
         return torch.stack(abs_differences)
 
+
+    def compute_cross_correlation(self, spectrogram1, spectrogram2):
+        # Compute cross-correlation along the time axis
+        cross_correlation = F.conv1d(spectrogram1.unsqueeze(1), spectrogram2.unsqueeze(1).flip(-1),
+                                     padding=spectrogram1.size(-1) - 1)
+
+        return cross_correlation.squeeze(1)
+
+    def compute_cross_correlation_mean(self, spectrograms1, spectrograms2):
+        cross_correlation_tensor = []
+        for spec1, spec2 in zip(spectrograms1, spectrograms2):
+            # Compute cross-correlation
+            cross_correlation = self.compute_cross_correlation(spec1, spec2)
+
+            # Compute mean correlation along the frequency axis
+            mean_correlation = torch.mean(cross_correlation, dim=0)
+
+            cross_correlation_tensor.append(mean_correlation)
+
+        return torch.stack(cross_correlation_tensor)
+
+
     def _createBatch(self, sample_indices):
         batch_audio = []
         batch_labels = []
@@ -284,11 +307,13 @@ class AccentHuggingBased(Dataset):
         content = torch.stack(content)
         style = torch.stack(style)
         diffs = self.compute_abs_centroid_difference_torch(content, style)
+        corrs = self.compute_cross_correlation_mean(content, style)
         return {
             "content": content,
             "style": style,
             "labels": torch.tensor(batch_labels),
             "similarity": diffs,
+            "corrs": corrs,
             "sample_rate": torch.tensor(batch_sr),
             "max_amplitudes": torch.tensor(batch_max_amplitudes)
         }

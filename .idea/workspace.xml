@@ -6,7 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="00a35db7-f2d6-4827-88ca-f39ec1eae119" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gan/ganlightningmodel.py" beforeDir="false" afterPath="$PROJECT_DIR$/gan/ganlightningmodel.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib_/DataLoader.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib_/DataLoader.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -45,6 +44,12 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "git-widget-placeholder": "yuval__comp",
+    "node.js.selected.package.tslint": "(autodetect)"
+  }
+}]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="C:\Users\mayor\PycharmProjects\accent2accent\lib_" />
@@ -355,17 +360,17 @@
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/accent2accent$vgg__1_.coverage" NAME="vgg (1) Coverage Results" MODIFIED="1708520279858" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/ada-conv-pytorch-master/lib" />
-    <SUITE FILE_PATH="coverage/accent2accent$ganlightningmodel.coverage" NAME="ganlightningmodel Coverage Results" MODIFIED="1709713633326" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/gan" />
-    <SUITE FILE_PATH="coverage/accent2accent$data_loader.coverage" NAME="data_loader Coverage Results" MODIFIED="1708080585703" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
-    <SUITE FILE_PATH="coverage/accent2accent$traning_gan.coverage" NAME="traning_gan Coverage Results" MODIFIED="1709715554542" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/gan" />
-    <SUITE FILE_PATH="coverage/accent2accent$new_dataset.coverage" NAME="new_dataset Coverage Results" MODIFIED="1709109280198" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
     <SUITE FILE_PATH="coverage/accent2accent$fafa__1_.coverage" NAME="fafa (1) Coverage Results" MODIFIED="1708953634648" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
-    <SUITE FILE_PATH="coverage/accent2accent$train_only_adaConv.coverage" NAME="train_only_adaConv Coverage Results" MODIFIED="1709120732824" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/gan" />
-    <SUITE FILE_PATH="coverage/accent2accent$DataLoader.coverage" NAME="DataLoader Coverage Results" MODIFIED="1709639747131" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
-    <SUITE FILE_PATH="coverage/accent2accent$VGGvsVGGish.coverage" NAME="VGGvsVGGish Coverage Results" MODIFIED="1710933147540" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
-    <SUITE FILE_PATH="coverage/accent2accent$vgg.coverage" NAME="vgg Coverage Results" MODIFIED="1708534988401" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
-    <SUITE FILE_PATH="coverage/accent2accent$dataset.coverage" NAME="dataset Coverage Results" MODIFIED="1708609513572" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
-    <SUITE FILE_PATH="coverage/accent2accent$fafa.coverage" NAME="fafa Coverage Results" MODIFIED="1708527362637" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/ada-conv-pytorch-master/lib" />
+    <SUITE FILE_PATH="coverage/accent2accent$traning_gan.coverage" NAME="traning_gan Coverage Results" MODIFIED="1709719508964" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/gan" />
     <SUITE FILE_PATH="coverage/accent2accent$adaconv_model.coverage" NAME="adaconv_model Coverage Results" MODIFIED="1709115555014" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_/adaconv" />
+    <SUITE FILE_PATH="coverage/accent2accent$data_loader.coverage" NAME="data_loader Coverage Results" MODIFIED="1708080585703" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
+    <SUITE FILE_PATH="coverage/accent2accent$fafa.coverage" NAME="fafa Coverage Results" MODIFIED="1708527362637" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/ada-conv-pytorch-master/lib" />
+    <SUITE FILE_PATH="coverage/accent2accent$train_only_adaConv.coverage" NAME="train_only_adaConv Coverage Results" MODIFIED="1708520370568" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/gan" />
+    <SUITE FILE_PATH="coverage/accent2accent$ganlightningmodel.coverage" NAME="ganlightningmodel Coverage Results" MODIFIED="1709719113722" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/gan" />
+    <SUITE FILE_PATH="coverage/accent2accent$VGGvsVGGish.coverage" NAME="VGGvsVGGish Coverage Results" MODIFIED="1710933147540" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
+    <SUITE FILE_PATH="coverage/accent2accent$DataLoader.coverage" NAME="DataLoader Coverage Results" MODIFIED="1709639747131" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
+    <SUITE FILE_PATH="coverage/accent2accent$dataset.coverage" NAME="dataset Coverage Results" MODIFIED="1708609513572" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
+    <SUITE FILE_PATH="coverage/accent2accent$new_dataset.coverage" NAME="new_dataset Coverage Results" MODIFIED="1709209933514" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
+    <SUITE FILE_PATH="coverage/accent2accent$vgg.coverage" NAME="vgg Coverage Results" MODIFIED="1709719332715" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
   </component>
 </project>
