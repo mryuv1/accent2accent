@@ -196,9 +196,11 @@ class GAN(pl.LightningModule):
 
         g_loss = content_loss + style_loss
         wandb.log({"Content Loss": content_loss, "Style Loss": style_loss})
-
-        for i in range(len(batch["similarity"])):
-            wandb.log({"Similarity": batch["similarity"][i], "Correlation": batch["corrs"][i]})
+        try:
+            for i in range(len(batch["similarity"])):
+                wandb.log({"Similarity": batch["similarity"][i], "Correlation": batch["corrs"][i]})
+        except Exception as e:
+            print("An error occurred:", e)
 
 
         if self.global_step % 20:
