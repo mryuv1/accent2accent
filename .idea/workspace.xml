@@ -4,8 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="00a35db7-f2d6-4827-88ca-f39ec1eae119" name="Changes" comment="">
+    <list default="true" id="00a35db7-f2d6-4827-88ca-f39ec1eae119" name="Changes" comment="Normalize, with new Weights, hopefuly working">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gan/ganlightningmodel.py" beforeDir="false" afterPath="$PROJECT_DIR$/gan/ganlightningmodel.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/gan/traning_gan.py" beforeDir="false" afterPath="$PROJECT_DIR$/gan/traning_gan.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib_/DataLoader.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib_/DataLoader.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -38,6 +40,9 @@
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
   </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 2
+}</component>
   <component name="ProjectId" id="2ccjcZTTlq2c1AUB6enFnPBWI1L" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectViewState">
@@ -46,8 +51,20 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "Python tests.pytest for ganlightningmodel.test.executor": "Run",
+    "Python tests.pytest in ganlightningmodel.py.executor": "Run",
+    "Python.DataLoader.executor": "Run",
+    "Python.ganlightningmodel.executor": "Run",
+    "Python.traning_gan.executor": "Run",
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
     "git-widget-placeholder": "yuval__comp",
-    "node.js.selected.package.tslint": "(autodetect)"
+    "last_opened_file_path": "C:/Users/LENOVO/Desktop/GitHub/IDconsole/accent2accent/gan",
+    "node.js.detected.package.eslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
+    "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
   <component name="RecentsManager">
@@ -57,34 +74,14 @@
       <recent name="C:\Users\mayor\PycharmProjects\accent2accent\lib_test" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\LENOVO\Desktop\GitHub\IDconsole\accent2accent" />
       <recent name="C:\Users\mayor\PycharmProjects\accent2accent" />
     </key>
   </component>
   <component name="RunManager" selected="Python.traning_gan">
-    <configuration name="ganlightningmodel" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="DataLoader" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="accent2accent" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <envs>
-        <env name="PYTHONUNBUFFERED" value="1" />
-      </envs>
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/gan" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/gan/ganlightningmodel.py" />
-      <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
-      <option name="EMULATE_TERMINAL" value="false" />
-      <option name="MODULE_MODE" value="false" />
-      <option name="REDIRECT_INPUT" value="false" />
-      <option name="INPUT_FILE" value="" />
-      <method v="2" />
-    </configuration>
-    <configuration name="new_dataset" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
-      <module name="accent2accent" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
@@ -96,7 +93,7 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/lib_/new_dataset.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/lib_/DataLoader.py" />
       <option name="PARAMETERS" value="" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
@@ -105,22 +102,45 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="traning_gan" type="PythonConfigurationType" factoryName="Python" singleton="false" temporary="true" nameIsGenerated="true">
+    <configuration name="ganlightningmodel" type="PythonConfigurationType" factoryName="Python">
+      <module name="accent2accent" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/gan" />
-      <option name="IS_MODULE_SDK" value="true" />
+      <option name="SDK_NAME" value="Python 3.8" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/gan/ganlightningmodel.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="true" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="traning_gan" type="PythonConfigurationType" factoryName="Python" singleton="false" temporary="true" nameIsGenerated="true">
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="SDK_NAME" value="Python 3.8" />
+      <option name="WORKING_DIRECTORY" value="C:\Users\LENOVO\Desktop\GitHub\IDconsole\accent2accent\gan" />
+      <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <module name="" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
       <option name="SCRIPT_NAME" value="$PROJECT_DIR$/gan/traning_gan.py" />
       <option name="PARAMETERS" value="" />
-      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="SHOW_COMMAND_LINE" value="true" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
       <option name="REDIRECT_INPUT" value="false" />
@@ -129,6 +149,7 @@
     </configuration>
     <configuration name="vgg" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="accent2accent" />
+      <option name="ENV_FILES" value="" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
@@ -149,12 +170,57 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="pytest for ganlightningmodel.test" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+      <module name="accent2accent" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/gan" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="_new_keywords" value="&quot;&quot;" />
+      <option name="_new_parameters" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;ganlightningmodel.test&quot;" />
+      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
+      <method v="2" />
+    </configuration>
+    <configuration name="pytest in ganlightningmodel.py" type="tests" factoryName="py.test" temporary="true" nameIsGenerated="true">
+      <module name="accent2accent" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/gan" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="_new_keywords" value="&quot;&quot;" />
+      <option name="_new_parameters" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;$PROJECT_DIR$/gan/ganlightningmodel.py&quot;" />
+      <option name="_new_targetType" value="&quot;PATH&quot;" />
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Python.ganlightningmodel" />
+      <item itemvalue="Python.DataLoader" />
+      <item itemvalue="Python.traning_gan" />
+      <item itemvalue="Python.vgg" />
+      <item itemvalue="Python tests.pytest for ganlightningmodel.test" />
+      <item itemvalue="Python tests.pytest in ganlightningmodel.py" />
+    </list>
     <recent_temporary>
       <list>
         <item itemvalue="Python.traning_gan" />
+        <item itemvalue="Python tests.pytest for ganlightningmodel.test" />
+        <item itemvalue="Python tests.pytest in ganlightningmodel.py" />
+        <item itemvalue="Python.DataLoader" />
         <item itemvalue="Python.vgg" />
-        <item itemvalue="Python.ganlightningmodel" />
-        <item itemvalue="Python.new_dataset" />
       </list>
     </recent_temporary>
   </component>
@@ -171,7 +237,7 @@
   </component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
-      <changelist id="921903bc-1451-4466-bd5a-eb1e57ba75a4" name="Changes" comment="" />
+      <changelist id="00a35db7-f2d6-4827-88ca-f39ec1eae119" name="Changes" comment="" />
       <created>1708417840935</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
@@ -183,6 +249,13 @@
       <workItem from="1711006390057" duration="507000" />
       <workItem from="1711008449888" duration="122000" />
       <workItem from="1711008591848" duration="41973000" />
+      <workItem from="1711539318066" duration="361000" />
+      <workItem from="1711539700277" duration="595000" />
+      <workItem from="1711540314929" duration="2606000" />
+      <workItem from="1711543743898" duration="27000" />
+      <workItem from="1711543945445" duration="4941000" />
+      <workItem from="1711549120825" duration="14771000" />
+      <workItem from="1711787506350" duration="8346000" />
     </task>
     <task id="LOCAL-00001" summary="talla">
       <option name="closed" value="true" />
@@ -336,11 +409,30 @@
       <option name="project" value="LOCAL" />
       <updated>1711449427895</updated>
     </task>
-    <option name="localTasksCounter" value="20" />
+    <task id="LOCAL-00020" summary="Normalize, with new Weights, hopefuly working">
+      <option name="closed" value="true" />
+      <created>1711612320392</created>
+      <option name="number" value="00020" />
+      <option name="presentableId" value="LOCAL-00020" />
+      <option name="project" value="LOCAL" />
+      <updated>1711612320392</updated>
+    </task>
+    <option name="localTasksCounter" value="21" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="talla" />
@@ -349,6 +441,13 @@
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/gan/ganlightningmodel.py</url>
+          <line>445</line>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+      </breakpoints>
       <default-breakpoints>
         <breakpoint type="python-exception">
           <properties notifyOnTerminate="true" exception="BaseException">
@@ -359,18 +458,20 @@
     </breakpoint-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/accent2accent$vgg__1_.coverage" NAME="vgg (1) Coverage Results" MODIFIED="1708520279858" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/ada-conv-pytorch-master/lib" />
-    <SUITE FILE_PATH="coverage/accent2accent$fafa__1_.coverage" NAME="fafa (1) Coverage Results" MODIFIED="1708953634648" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
-    <SUITE FILE_PATH="coverage/accent2accent$traning_gan.coverage" NAME="traning_gan Coverage Results" MODIFIED="1709719508964" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/gan" />
-    <SUITE FILE_PATH="coverage/accent2accent$adaconv_model.coverage" NAME="adaconv_model Coverage Results" MODIFIED="1709115555014" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_/adaconv" />
-    <SUITE FILE_PATH="coverage/accent2accent$data_loader.coverage" NAME="data_loader Coverage Results" MODIFIED="1708080585703" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
-    <SUITE FILE_PATH="coverage/accent2accent$fafa.coverage" NAME="fafa Coverage Results" MODIFIED="1708527362637" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/ada-conv-pytorch-master/lib" />
-    <SUITE FILE_PATH="coverage/accent2accent$train_only_adaConv.coverage" NAME="train_only_adaConv Coverage Results" MODIFIED="1708520370568" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/gan" />
-    <SUITE FILE_PATH="coverage/accent2accent$ganlightningmodel.coverage" NAME="ganlightningmodel Coverage Results" MODIFIED="1709719113722" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/gan" />
-    <SUITE FILE_PATH="coverage/accent2accent$VGGvsVGGish.coverage" NAME="VGGvsVGGish Coverage Results" MODIFIED="1710933147540" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
-    <SUITE FILE_PATH="coverage/accent2accent$DataLoader.coverage" NAME="DataLoader Coverage Results" MODIFIED="1709639747131" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
-    <SUITE FILE_PATH="coverage/accent2accent$dataset.coverage" NAME="dataset Coverage Results" MODIFIED="1708609513572" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
     <SUITE FILE_PATH="coverage/accent2accent$new_dataset.coverage" NAME="new_dataset Coverage Results" MODIFIED="1709209933514" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
+    <SUITE FILE_PATH="coverage/accent2accent$vgg__1_.coverage" NAME="vgg (1) Coverage Results" MODIFIED="1708520279858" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/ada-conv-pytorch-master/lib" />
+    <SUITE FILE_PATH="coverage/accent2accent$VGGvsVGGish.coverage" NAME="VGGvsVGGish Coverage Results" MODIFIED="1710933147540" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
+    <SUITE FILE_PATH="coverage/accent2accent$DataLoader.coverage" NAME="DataLoader Coverage Results" MODIFIED="1711541039600" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
+    <SUITE FILE_PATH="coverage/accent2accent$dataset.coverage" NAME="dataset Coverage Results" MODIFIED="1708609513572" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
+    <SUITE FILE_PATH="coverage/accent2accent$fafa.coverage" NAME="fafa Coverage Results" MODIFIED="1708527362637" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/ada-conv-pytorch-master/lib" />
     <SUITE FILE_PATH="coverage/accent2accent$vgg.coverage" NAME="vgg Coverage Results" MODIFIED="1709719332715" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
+    <SUITE FILE_PATH="coverage/accent2accent$adaconv_model.coverage" NAME="adaconv_model Coverage Results" MODIFIED="1709115555014" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_/adaconv" />
+    <SUITE FILE_PATH="coverage/accent2accent$pytest_for_ganlightningmodel_test.coverage" NAME="pytest for ganlightningmodel.test Coverage Results" MODIFIED="1711550970880" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/gan" />
+    <SUITE FILE_PATH="coverage/accent2accent$traning_gan.coverage" NAME="traning_gan Coverage Results" MODIFIED="1711471586821" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/gan" />
+    <SUITE FILE_PATH="coverage/accent2accent$data_loader.coverage" NAME="data_loader Coverage Results" MODIFIED="1708080585703" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
+    <SUITE FILE_PATH="coverage/accent2accent$train_only_adaConv.coverage" NAME="train_only_adaConv Coverage Results" MODIFIED="1708520370568" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/gan" />
+    <SUITE FILE_PATH="coverage/accent2accent$ganlightningmodel.coverage" NAME="ganlightningmodel Coverage Results" MODIFIED="1711789490793" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="" />
+    <SUITE FILE_PATH="coverage/accent2accent$fafa__1_.coverage" NAME="fafa (1) Coverage Results" MODIFIED="1708953634648" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/lib_" />
+    <SUITE FILE_PATH="coverage/accent2accent$pytest_in_ganlightningmodel_py.coverage" NAME="pytest in ganlightningmodel.py Coverage Results" MODIFIED="1711550661764" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/gan" />
   </component>
 </project>

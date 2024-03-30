@@ -24,6 +24,8 @@ class AccentHuggingBased(Dataset):
     def __init__(self, data_type="train", batch_size=2, SlowRun=True, limit_samples=5000, enable_multiprocessing=True,
                  TzlilTrain=False):
         self.batch_size = batch_size if batch_size > 80 else 140
+        if not torch.cuda.is_available():
+            self.batch_size = 30
         #Set self.log_file to be a new file name dataloader_log.txt
         self.log_file = "dataloader_log.txt"
         # Load the dataset
@@ -149,14 +151,19 @@ class AccentHuggingBased(Dataset):
             start_sample = samples_per_segment * i
             end_sample = start_sample + samples_per_segment
             audio_segment = audio_data[start_sample:end_sample]
+            # if i==0:
+            #     print("Audio segment shape is ", audio_segment.shape)
+            #     print("Audio segment is ", audio_segment)
+            #     print("Audio segment type is", type(audio_segment))
 
             # Generate Mel-spectrogram for the segment
             S = librosa.feature.melspectrogram(
                 y=audio_segment, sr=sr, n_fft=2048, hop_length=512, n_mels=256, window='hann'
             )
             # Convert to log scale (dB)
-            S_dB = librosa.power_to_db(S, ref=np.max)
 
+            S_dB = librosa.power_to_db(S, ref=np.max)
+            #Print
             # Compute target amplitude for the segment
             target_amplitude = np.max(np.abs(audio_segment))
 
@@ -199,7 +206,7 @@ class AccentHuggingBased(Dataset):
 
     def compute_cross_correlation(self, spectrogram1, spectrogram2):
         # Compute cross-correlation along the time axis
-        cross_correlation = F.conv1d(spectrogram1.unsqueeze(1), spectrogram2.unsqueeze(1).flip(-1),
+        cross_correlation = F.conv1d(spectrogram1.squeeze(1), spectrogram2.squeeze(1).flip(-1),
                                      padding=spectrogram1.size(-1) - 1)
 
         return cross_correlation.squeeze(1)
@@ -447,8 +454,8 @@ class AccentHuggingBasedDataLoader(pl.LightningDataModule):
     @staticmethod
     def add_argparse_args(parent_parser):
         parser = ArgumentParser(parents=[parent_parser], add_help=False)
-        parser.add_argument("--batch_size", type=int, default=30, help="Batch size for training")
-        parser.add_argument("--epochs", type=int, default=10, help="Number of epochs for training")
+        parser.add_argument("--batch_size", type=int, default=8, help="Batch size for training")
+        parser.add_argument("--epochs", type=int, default=100, help="Number of epochs for training")
         parser.add_argument("--weights_path", type=str, default="vgg.pth", help="Path to the weights file")
         parser.add_argument("--save_dir", type=str, default="NewVGGWeights", help="Directory to save weights")
         parser.add_argument("--big_dataset", type=bool, default=False,
@@ -474,7 +481,7 @@ class AccentHuggingBasedDataLoader(pl.LightningDataModule):
     def train_dataloader(self):
         # Use the modify_batch function to add noise to the batch
         return DataLoader(AccentHuggingBased(batch_size=self.batch_size, data_type="train", SlowRun=self.SlowRun),
-                          batch_size=1, shuffle=True, num_workers=4)
+                          batch_size=1, shuffle=True, num_workers=1)
 
     def val_dataloader(self):
         return DataLoader(AccentHuggingBased(data_type="test", batch_size=self.batch_size, SlowRun=self.SlowRun),

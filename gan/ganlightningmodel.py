@@ -72,6 +72,7 @@ class GAN(pl.LightningModule):
                  lr, b1, b2, prefix="prefix", PreTrainAdaConv=True, VGGish=True,
                  **_):
         super().__init__()
+
         self.save_hyperparameters()
         self.automatic_optimization = False
         # networks
@@ -103,7 +104,9 @@ class GAN(pl.LightningModule):
             self.content_loss = MSEContentLoss()
         else:
             raise ValueError('content_loss')
-
+        print("The style size if ", style_size)
+        print("The style channels is ", style_channels)
+        print("The kernel size is ", kernel_size)
         # Model type
         if model_type == 'adain':
             self.generator = AdaINModel(alpha)
@@ -147,33 +150,22 @@ class GAN(pl.LightningModule):
         return F.binary_cross_entropy(y_hat, y)
 
     def convert_spec_to_audio(self, spectrogram, sr, max_amp):
-
-        # Unnormalize the spectrogram
-        print("The spectogram shape is ", spectrogram.shape)
-
-        spectrogram = (spectrogram * (self.content_std + 1e-6)) + self.content_mean
-        spectrogram = torch.nan_to_num(spectrogram, nan=-80.0)
         spectrogram = spectrogram.cpu().detach().numpy()
-        sr = sr[0].cpu().detach().numpy()
-        max_amp = max_amp[0].cpu().detach().numpy()
-        #Save the spectogram as a pickle file, put the max_amp and sr in filename
-        with open(f"audio_{max_amp}_{sr}_{self.content_mean}_{self.content_std}.pkl", 'wb') as f:
-            pickle.dump(spectrogram, f)
-
+        sr = sr.cpu().detach().numpy()
+        max_amp = max_amp.cpu().detach().numpy()
+        # Save the spectogram as a pickle file, put the max_amp and sr in filename
+        spectrogram = librosa.db_to_power(spectrogram)
         y = librosa.feature.inverse.mel_to_audio(spectrogram, sr=sr)
-
-        # Normalize the audio signal
         normalization_factor = max_amp / np.max(np.abs(y))
-        y_normalized = y * normalization_factor
-        # Reduce noise
-        #print the size of the numpy array y_normalized
-        y_normalized = y_normalized.squeeze(0)
-        print("The size of the numpy array is ", y_normalized.shape)
-        #Convert the y_noramlized from (1,1,192000) numpy array to (1,192000) numpy array
-        y_normalized = np.nan_to_num(y_normalized, nan=0.0)
-        audio = nr.reduce_noise(y_normalized, sr=sr)
+        y = y * normalization_factor
+        y = y.squeeze(0)
+        # y *= max_amp / np.max(np.abs(y))
+        if not isinstance(y, np.ndarray):
+            y = y.numpy()
+        audio = nr.reduce_noise(y, sr=sr)
 
         return audio
+
 
     def training_step(self, batch, batch_idx,eps=1e-6):
         inputs = batch["content"].squeeze(0)
@@ -233,7 +225,7 @@ class GAN(pl.LightningModule):
         except:
             print("Error in saving images")
 
-        # if batch_idx % 1:
+        # if self.global_step % 20:
         if 1==1:
             log_input = inputs[0, 0, :, :]
             log_style = styles[0, 0, :, :]
@@ -252,13 +244,15 @@ class GAN(pl.LightningModule):
             image_array = torch.cat((log_input, log_output, log_style), dim=1)
 
             images = wandb.Image(image_array, caption="Left: Input, Middle: Output, Right: Style")
-
+            #Re-normalize the generated images by the content mean and std
+            pre_audio = (self.generated_imgs[0, 0, :, :] * (self.content_std + 1e-6)) + self.content_mean
+            #pre_audio = (inputs[0, 0, :, :]* (self.content_std + 1e-6)) + self.content_mean
             wandb.log({"examples": images})
             # Convert spectrogram to audio
-            audio = self.convert_spec_to_audio(log_output, batch["sample_rate"][0],
-                                               batch["max_amplitudes"][0])
+            audio = self.convert_spec_to_audio(pre_audio, batch["sample_rate"][0][0],
+                                               batch["max_amplitudes"][0][0])
             # Log audio to wandb
-            wandb.log({"Generated Audio": wandb.Audio(audio, sample_rate=batch["sample_rate"][0][0].cpu().detach().numpy())})
+            wandb.log({"Generated Audio": wandb.Audio(audio.flatten(), sample_rate=48000)})
         if self.prefix == "golden":
             loss_of_folling_descriminator = 0.0001 * self.adversarial_loss(
                 self.discriminator(self.generated_imgs.detach()), torch.ones(inputs.size(0), 1).type_as(inputs))
@@ -388,55 +382,78 @@ class GAN(pl.LightningModule):
             os.remove(os.path.join("NewVGGWeights", discriminator_files[0]))
         print("The generator weights are", generator_files[-1], "The discriminator weights are",
               discriminator_files[-1])
-
-def review_audio(spec, sr, max_amp, mean,std):
-    specto = spec
-    # Unnormalize the spectrogram
-    print("The spectogram shape is ", specto.shape)
-    #Normalize the specto   to be in [-1,1]
-    mean = torch.mean(specto)
-    std = torch.std(specto)
-    spectro = (specto - mean) / (std + 1e-6)
-
-  #  specto = (specto * (std )) + mean
-   # specto = torch.nan_to_num(specto, nan=-80.0)
-    specto = specto.cpu().detach().numpy()
-    sr = sr.cpu().detach().numpy()
-    max_amp = max_amp.cpu().detach().numpy()
-    print("The spectro is ", specto)
-    specto.squeeze(0).squeeze(0)
-    print(sr)
-    y = librosa.feature.inverse.mel_to_audio(specto, sr=sr)
-    print(y)
-    print("SUM OF Y", y)
-    # Normalize the audio signal
-#    normalization_factor = max_amp / np.max(np.abs(y))
-   # y_normalized = y * normalization_factor
-    # Reduce noise
-    #print the size of the numpy array y_normalized
-    y_normalized = y
-    y_normalized = y_normalized.squeeze(0)
-    y_normalized = np.nan_to_num(y_normalized, nan=0.0)
-    print("Sum is ", np.sum(y_normalized))
-    return y_normalized
-    print("The size of the numpy array is ", y_normalized.shape)
-    #Convert the y_noramlized from (1,1,192000) numpy array to (1,192000) numpy array
-    y_normalized = np.nan_to_num(y_normalized, nan=0.0)
-    audio = nr.reduce_noise(y_normalized, sr=sr)
-
-    return audio
-
-with open("gan/audio.pkl", "rb") as f:
-    spectrogram = pickle.load(f)
-spectrogram = torch.tensor(spectrogram)
-for i in range(len(spectrogram)):
-    for j in range(len(spectrogram[0])):
-        print(spectrogram[i][j])
-sr = torch.tensor(48000)
-max_amp = torch.tensor(0.0609641969203949)
-mean = torch.tensor(-62.5935)
-std = torch.tensor(18.3705)
-audio = review_audio(spectrogram, sr, max_amp, mean,std)
-#convert audio to wav file
-print(audio)
-librosa.output.write_wav("audio.wav", audio, 48000)
+# def review_audio(spec, sr, target_amp, mean, std):
+#     # Unnormalize the spectrogram
+#     print("The spectrogram shape is ", spec.shape)
+#
+#     # Convert tensor to numpy array
+#     specto = spec.cpu().detach().numpy()
+#     sr = sr.cpu().detach().numpy()
+#     # max_amp = max_amp.cpu().detach().numpy()  # This variable is not provided as an argument
+#
+#
+#     # # Normalize the Mel spectrogram to be in the range [-1, 1]
+#     # max_abs_value = np.max(np.abs(specto))
+#     # specto_normalized = specto / max_abs_value
+#     specto_normalized = specto
+#     print(f"PRE _ The spectogram normalized is {specto_normalized}")
+#     specto_normalized = librosa.db_to_power(specto_normalized)
+#     print(f"The spectogram normalized is {specto_normalized}")
+#     # Convert normalized Mel spectrogram to audio waveform
+#     y = librosa.feature.inverse.mel_to_audio(specto_normalized, sr=sr, power=max_amp)
+#
+#     # No need for normalization here, since y is already the audio waveform
+#
+#     # Print information about the normalized waveform
+#     print("Normalized waveform shape:", y.shape)
+#     print("Normalized waveform:", y)
+#     print(np.sum(y[0]))
+#
+#     # Apply noise reduction if needed
+#     # audio = nr.reduce_noise(y, sr=sr)
+#     audio = y  # No noise reduction applied in this version of the function
+#
+#     return audio
+#
+# def review_audio(spectrogram, sr, max_amp):
+#
+#     # Unnormalize the spectrogram
+#     print("The spectogram shape is ", spectrogram.shape)
+#     # with open(f"audio.pkl", 'wb') as f:
+#     #     pickle.dump(spectrogram, f)
+#    # spectrogram = torch.nan_to_num(spectrogram, nan=-80.0)
+#     spectrogram = spectrogram.cpu().detach().numpy()
+#     sr = sr.cpu().detach().numpy()
+#     max_amp = max_amp.cpu().detach().numpy()
+#     #Save the spectogram as a pickle file, put the max_amp and sr in filename
+#     with open(f"audio2.pkl", 'wb') as f:
+#         pickle.dump(spectrogram, f)
+#     spectrogram = librosa.db_to_power(spectrogram)
+#     y = librosa.feature.inverse.mel_to_audio(spectrogram, sr=sr,n_fft=2048, hop_length=512, win_length=2048, window='hann')
+#     # Adjust amplitude of the audio segment
+#     y *= max_amp / np.max(np.abs(y))
+#     y = y.squeeze(0)
+#     #do transpose to the y
+#  #   y = np.transpose(y)
+#     print("Y shape is ", y.shape)
+#     audio = nr.reduce_noise(y, sr=sr)
+#
+#     return audio
+#
+# model = AdaConvModel(256, 512, 3,VGGish=True)
+# model.load_state_dict(torch.load("GeneratorWeights-golden.pth"))
+# with open("gan/audio_test.pkl", "rb") as f:
+#     spectrogram = pickle.load(f)
+# spestyle_sizectrogram = torch.tensor(spectrogram)
+# # for i in range(len(spectrogram)):
+# #     for j in range(len(spectrogram[0])):
+# #         print(spectrogram[i][j])
+# sr = torch.tensor(48000)
+# max_amp = torch.tensor(0.0609641969203949)
+# # mean = torch.tensor(-62.5935)
+# # std = torch.tensor(18.3705)
+# audio = review_audio(spectrogram, sr, max_amp)
+# #convert audio to wav file
+# print(audio)
+#
+# librosa.output.write_wav("audio.mp3", audio, 48000)
