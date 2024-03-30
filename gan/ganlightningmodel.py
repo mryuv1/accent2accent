@@ -162,7 +162,8 @@ class GAN(pl.LightningModule):
         # y *= max_amp / np.max(np.abs(y))
         if not isinstance(y, np.ndarray):
             y = y.numpy()
-        audio = nr.reduce_noise(y, sr=sr)
+        audio = y
+    #    audio = nr.reduce_noise(y, sr=sr)
 
         return audio
 
@@ -196,8 +197,8 @@ class GAN(pl.LightningModule):
         g_loss = content_loss + style_loss
         wandb.log({"Content Loss": content_loss, "Style Loss": style_loss})
 
-        for i in range(len(batch["Similarity"])):
-            wandb.log({"Similarity": batch["Similarity"][i], "Correlation": batch["Correlation"][i]})
+        for i in range(len(batch["similarity"])):
+            wandb.log({"Similarity": batch["similarity"][i], "Correlation": batch["corrs"][i]})
 
 
         if self.global_step % 20:
@@ -217,16 +218,28 @@ class GAN(pl.LightningModule):
             # Concatenate images horizontally
             image_array = torch.cat((log_input, log_output, log_style), dim=1)
 
-            images = wandb.Image(image_array, caption="Left: Input, Middle: Output, Right: Style")
+       #     images = wandb.Image(image_array, caption=f"Left: Input, Middle: Output-{batch["similarity"][0]}-{batch["corrs"][0]}, Right: Style")
+            images = wandb.Image(image_array,
+                                 caption=f"Left: Input, Middle: Output-{batch['similarity'][0]}-{batch['corrs'][0]}, Right: Style")
             #Re-normalize the generated images by the content mean and std
             pre_audio = (self.generated_imgs[0, 0, :, :] * (self.content_std + 1e-6)) + self.content_mean
+            pre_content = (inputs[0, 0, :, :] * (self.content_std + 1e-6)) + self.content_mean
+            pre_style = (styles[0, 0, :, :] * (self.content_std + 1e-6)) + self.content_mean
             #pre_audio = (inputs[0, 0, :, :]* (self.content_std + 1e-6)) + self.content_mean
             wandb.log({"examples": images})
             # Convert spectrogram to audio
-            audio = self.convert_spec_to_audio(pre_audio, batch["sample_rate"][0][0],
-                                               batch["max_amplitudes"][0][0])
-            # Log audio to wandb
-            wandb.log({"Generated Audio": wandb.Audio(audio.flatten(), sample_rate=48000)})
+            # Convert spectrogram to audio for pre_audio, pre_content, and pre_style
+            audio_generated = self.convert_spec_to_audio(pre_audio, batch["sample_rate"][0][0],
+                                                         batch["max_amplitudes"][0][0])
+            audio_content = self.convert_spec_to_audio(pre_content, batch["sample_rate"][0][0],
+                                                       batch["max_amplitudes"][0][0])
+            audio_style = self.convert_spec_to_audio(pre_style, batch["sample_rate"][0][0],
+                                                     batch["max_amplitudes"][0][0])
+
+            # Log audio to WandB with matching labels
+            wandb.log({"Generated Audio": wandb.Audio(audio_generated.flatten(), sample_rate=48000)})
+            wandb.log({"Content Audio": wandb.Audio(audio_content.flatten(), sample_rate=48000)})
+            wandb.log({"Style Audio": wandb.Audio(audio_style.flatten(), sample_rate=48000)})
         if self.prefix == "golden" or self.prefix=="tzlil_golden":
             loss_of_folling_descriminator = 0.0001 * self.adversarial_loss(
                 self.discriminator(self.generated_imgs.detach()), torch.ones(inputs.size(0), 1).type_as(inputs))

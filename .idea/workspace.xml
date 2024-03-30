@@ -254,7 +254,7 @@
       <workItem from="1711543743898" duration="27000" />
       <workItem from="1711543945445" duration="4941000" />
       <workItem from="1711549120825" duration="14771000" />
-      <workItem from="1711787506350" duration="10174000" />
+      <workItem from="1711787506350" duration="11590000" />
     </task>
     <task id="LOCAL-00001" summary="talla">
       <option name="closed" value="true" />
@@ -432,7 +432,15 @@
       <option name="project" value="LOCAL" />
       <updated>1711798247338</updated>
     </task>
-    <option name="localTasksCounter" value="23" />
+    <task id="LOCAL-00023" summary="Normalize, with new Weights, hopefuly working">
+      <option name="closed" value="true" />
+      <created>1711799112205</created>
+      <option name="number" value="00023" />
+      <option name="presentableId" value="LOCAL-00023" />
+      <option name="project" value="LOCAL" />
+      <updated>1711799112205</updated>
+    </task>
+    <option name="localTasksCounter" value="24" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -459,7 +467,7 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/gan/ganlightningmodel.py</url>
-          <line>422</line>
+          <line>432</line>
           <option name="timeStamp" value="1" />
         </line-breakpoint>
       </breakpoints>

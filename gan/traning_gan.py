@@ -17,7 +17,7 @@ sys.path.append('../lib_')
 sys.path.append('..')
 # from lib_.data_loader import DataModule
 # from lib_.lightning.datamodule import DataModule
-from adaconv.adaconv_model import AdaConvModel
+#from adaconv.adaconv_model import AdaConvModel
 from ganlightningmodel import GAN
 import os
 from DataLoader import AccentHuggingBasedDataLoader
@@ -163,7 +163,7 @@ if __name__ == '__main__':
     else:
         checkPoint = None
    # checkPoint = os.path.join("../CHECKPOINT-tzlil_golden-v1.ckpt")
-    checkPoint  = "../CHECKPOINT-tzlil_golden-v1.ckpt"
+    #checkPoint  = "../CHECKPOINT-tzlil_golden-v1.ckpt"
     if checkPoint is None:
         max_epochs = 1
         model = GAN(**args)
