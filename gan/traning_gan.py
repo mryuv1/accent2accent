@@ -162,7 +162,7 @@ if __name__ == '__main__':
         print("Checkpoint exists", checkPoint)
     else:
         checkPoint = None
-   # checkPoint = os.path.join("../CHECKPOINT-tzlil_golden-v1.ckpt")
+    #checkPoint = os.path.join("../CHECKPOINT-tzlil_golden-v1.ckpt")
     #checkPoint  = "../CHECKPOINT-tzlil_golden-v1.ckpt"
     if checkPoint is None:
         max_epochs = 1

@@ -5,8 +5,6 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="00a35db7-f2d6-4827-88ca-f39ec1eae119" name="Changes" comment="Normalize, with new Weights, hopefuly working">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gan/ganlightningmodel.py" beforeDir="false" afterPath="$PROJECT_DIR$/gan/ganlightningmodel.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gan/traning_gan.py" beforeDir="false" afterPath="$PROJECT_DIR$/gan/traning_gan.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -254,7 +252,7 @@
       <workItem from="1711543743898" duration="27000" />
       <workItem from="1711543945445" duration="4941000" />
       <workItem from="1711549120825" duration="14771000" />
-      <workItem from="1711787506350" duration="11590000" />
+      <workItem from="1711787506350" duration="11862000" />
     </task>
     <task id="LOCAL-00001" summary="talla">
       <option name="closed" value="true" />
@@ -440,7 +438,15 @@
       <option name="project" value="LOCAL" />
       <updated>1711799112205</updated>
     </task>
-    <option name="localTasksCounter" value="24" />
+    <task id="LOCAL-00024" summary="Normalize, with new Weights, hopefuly working">
+      <option name="closed" value="true" />
+      <created>1711800667461</created>
+      <option name="number" value="00024" />
+      <option name="presentableId" value="LOCAL-00024" />
+      <option name="project" value="LOCAL" />
+      <updated>1711800667461</updated>
+    </task>
+    <option name="localTasksCounter" value="25" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

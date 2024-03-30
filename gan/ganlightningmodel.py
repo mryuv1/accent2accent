@@ -247,7 +247,7 @@ class GAN(pl.LightningModule):
             loss_of_folling_descriminator = self.hparams.AdversionalLossWeight * self.adversarial_loss(
                 self.discriminator(self.generated_imgs.detach()), torch.ones(inputs.size(0), 1).type_as(inputs))
         # loss of the discriminator being fooled by the generated images
-        if g_loss <= 0.0032:
+        if content_loss <= 0.0032:
             g_loss += loss_of_folling_descriminator
             print("g loss:", g_loss, "content loss:", content_loss,
                   "style loss:", style_loss, "Fooling discriminator:",
