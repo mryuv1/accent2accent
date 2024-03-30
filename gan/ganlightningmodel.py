@@ -195,20 +195,9 @@ class GAN(pl.LightningModule):
 
         g_loss = content_loss + style_loss
         wandb.log({"Content Loss": content_loss, "Style Loss": style_loss})
-        # Log in the wandb 2 values from batch
-        data_dict = {
-            "Similarity": batch["similarity"],
-            "Correlation": batch["corrs"]
-        }
 
-        # Flatten lists in the dictionary
-        for key, value in data_dict.items():
-            flattened_array = np.array(value).flatten()
-            data_dict[key] = flattened_array.tolist()
-
-        # Log flattened data
-        wandb.log(data_dict)
-
+        for i in range(len(batch["Similarity"])):
+            wandb.log({"Similarity": batch["Similarity"][i], "Correlation": batch["Correlation"][i]})
 
 
         if self.global_step % 20:

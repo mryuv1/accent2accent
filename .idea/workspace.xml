@@ -8,7 +8,6 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gan/ganlightningmodel.py" beforeDir="false" afterPath="$PROJECT_DIR$/gan/ganlightningmodel.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/gan/traning_gan.py" beforeDir="false" afterPath="$PROJECT_DIR$/gan/traning_gan.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib_/DataLoader.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib_/DataLoader.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -255,7 +254,7 @@
       <workItem from="1711543743898" duration="27000" />
       <workItem from="1711543945445" duration="4941000" />
       <workItem from="1711549120825" duration="14771000" />
-      <workItem from="1711787506350" duration="9284000" />
+      <workItem from="1711787506350" duration="10174000" />
     </task>
     <task id="LOCAL-00001" summary="talla">
       <option name="closed" value="true" />
@@ -425,7 +424,15 @@
       <option name="project" value="LOCAL" />
       <updated>1711797339973</updated>
     </task>
-    <option name="localTasksCounter" value="22" />
+    <task id="LOCAL-00022" summary="Normalize, with new Weights, hopefuly working">
+      <option name="closed" value="true" />
+      <created>1711798247338</created>
+      <option name="number" value="00022" />
+      <option name="presentableId" value="LOCAL-00022" />
+      <option name="project" value="LOCAL" />
+      <updated>1711798247338</updated>
+    </task>
+    <option name="localTasksCounter" value="23" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -452,7 +459,7 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/gan/ganlightningmodel.py</url>
-          <line>430</line>
+          <line>422</line>
           <option name="timeStamp" value="1" />
         </line-breakpoint>
       </breakpoints>
