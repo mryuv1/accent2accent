@@ -109,6 +109,11 @@ if __name__ == '__main__':
     torch.set_default_dtype(torch.float32)
     torch.manual_seed(43)
     args = parse_args()
+    if 1==1:
+        from datasets import load_dataset
+
+        dataset = load_dataset("vctk")
+    exit(0)
     if 0==1:
         model = AdaConvModel(256, 512, 3, VGGish=True)
         model.load_state_dict(torch.load("GeneratorWeights-golden.pth"))

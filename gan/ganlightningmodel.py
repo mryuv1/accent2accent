@@ -192,41 +192,26 @@ class GAN(pl.LightningModule):
         content_loss, style_loss = self.generator_loss(embeddings)
         self.log("Generator Style Loss", style_loss, prog_bar=True)
         self.log("Generator Content Loss", content_loss, prog_bar=True)
+
         g_loss = content_loss + style_loss
         wandb.log({"Content Loss": content_loss, "Style Loss": style_loss})
-        # Check if the 'images' directory exists, if not, create it
+        # Log in the wandb 2 values from batch
+        data_dict = {
+            "Similarity": batch["similarity"],
+            "Correlation": batch["corrs"]
+        }
+
+        # Flatten lists in the dictionary
+        for key, value in data_dict.items():
+            flattened_array = np.array(value).flatten()
+            data_dict[key] = flattened_array.tolist()
+
+        # Log flattened data
+        wandb.log(data_dict)
 
 
-        # Check if the absolute difference between the current generator loss and the previous generator loss is greater than 700
-        try:
-            if torch.abs(g_loss - self.old_loss) > 0.002:
-                # Save the inputs, style, and generated images
-                for idx, (input_img, style_img, generated_img) in enumerate(zip(inputs, styles, self.generated_imgs)):
-                    # Normalize images
-                    input_img_norm = F.normalize(input_img, [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-                    style_img_norm = F.normalize(style_img, [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-                    generated_img_norm = F.normalize(generated_img, [0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 
-                    # Convert tensors to PIL images
-                    input_img_pil = torchvision.transforms.ToPILImage()(input_img_norm.cpu().detach().squeeze(0))
-                    style_img_pil = torchvision.transforms.ToPILImage()(style_img_norm.cpu().detach().squeeze(0))
-                    generated_img_pil = torchvision.transforms.ToPILImage()(generated_img_norm.cpu().detach().squeeze(0))
-
-                    # Concatenate images
-                    concat_img = Image.new('RGB', (
-                    input_img_pil.width + style_img_pil.width + generated_img_pil.width, input_img_pil.height))
-                    concat_img.paste(input_img_pil, (0, 0))
-                    concat_img.paste(style_img_pil, (input_img_pil.width, 0))
-                    concat_img.paste(generated_img_pil, (input_img_pil.width + style_img_pil.width, 0))
-
-                    # Save concatenated image
-                    concat_img_path = f"images/concat_{batch_idx}_{idx}_g_loss_{g_loss}.jpg"
-                    concat_img.save(concat_img_path)
-        except:
-            print("Error in saving images")
-
-        # if self.global_step % 20:
-        if 1==1:
+        if self.global_step % 20:
             log_input = inputs[0, 0, :, :]
             log_style = styles[0, 0, :, :]
             log_output = self.generated_imgs[0, 0, :, :]
@@ -253,14 +238,14 @@ class GAN(pl.LightningModule):
                                                batch["max_amplitudes"][0][0])
             # Log audio to wandb
             wandb.log({"Generated Audio": wandb.Audio(audio.flatten(), sample_rate=48000)})
-        if self.prefix == "golden":
+        if self.prefix == "golden" or self.prefix=="tzlil_golden":
             loss_of_folling_descriminator = 0.0001 * self.adversarial_loss(
                 self.discriminator(self.generated_imgs.detach()), torch.ones(inputs.size(0), 1).type_as(inputs))
         else:
             loss_of_folling_descriminator = self.hparams.AdversionalLossWeight * self.adversarial_loss(
                 self.discriminator(self.generated_imgs.detach()), torch.ones(inputs.size(0), 1).type_as(inputs))
         # loss of the discriminator being fooled by the generated images
-        if g_loss <= 0.002:
+        if g_loss <= 0.0032:
             g_loss += loss_of_folling_descriminator
             print("g loss:", g_loss, "content loss:", content_loss,
                   "style loss:", style_loss, "Fooling discriminator:",
@@ -278,7 +263,7 @@ class GAN(pl.LightningModule):
         self.manual_backward(g_loss)
         optimizer_g.step()
         # Check if generator loss is lower than 50 before updating discriminator
-        if content_loss <= 0.002:
+        if content_loss <= 0.0032:
             # Train the discriminator
             optimizer_d.zero_grad()
             valid = torch.ones(inputs.size(0), 1).type_as(inputs)

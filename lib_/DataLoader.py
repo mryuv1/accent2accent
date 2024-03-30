@@ -325,113 +325,6 @@ class AccentHuggingBased(Dataset):
             "max_amplitudes": torch.tensor(batch_max_amplitudes)
         }
 
-    def _createBatch_Normalization(self, sample_indices):
-        batch_audio = []
-        batch_labels = []
-        batch_sr = []
-        batch_max_amplitudes = []
-        batch_norm_factors = []
-
-        zero_audio = []
-        zero_labels = []
-        zero_sr = []
-        zero_max_amplitudes = []
-        zero_norm_factors = []
-
-        label_count = {}
-        zero_count = 0
-        all_count = 0
-
-        for idx in sample_indices:
-            label_number = self.get_label_number(self.dataset[idx]['labels'])
-
-            if label_number == -1:
-                continue
-            sr = self.dataset[idx]['audio']['sampling_rate']
-
-            spectrograms, target_amplitudes, norm_factor = self._process_audio_array(
-                self.dataset[idx]['audio']['array'], sr,
-                segment_duration=4, ignore_last_padded_spec=1)
-
-            if label_number == 0:
-                zero_audio.extend(
-                    [torch.stack([torch.tensor(spectrograms[j]) for _ in range(1)]) for j in
-                     range(len(spectrograms))])
-                zero_labels.extend([label_number] * len(spectrograms))
-                zero_sr.extend([sr] * len(spectrograms))
-                zero_max_amplitudes.extend(target_amplitudes)
-                zero_norm_factors.extend([norm_factor] * len(spectrograms))
-                zero_count += len(spectrograms)
-            else:
-                batch_audio.extend(
-                    [torch.stack([torch.tensor(spectrograms[j]) for _ in range(1)]) for j in
-                     range(len(spectrograms))])
-                batch_labels.extend([label_number] * len(spectrograms))
-                batch_sr.extend([sr] * len(spectrograms))
-                batch_max_amplitudes.extend(target_amplitudes)
-                batch_norm_factors.extend([norm_factor] * len(spectrograms))
-
-            all_count += len(spectrograms)
-            label_count[label_number] = label_count.get(label_number, 0) + len(spectrograms)
-
-        max_size = min(len(batch_audio), len(zero_audio))
-        content = batch_audio[:max_size]
-        style = zero_audio[:max_size]
-        batch_labels += zero_labels
-        batch_sr += zero_sr
-        batch_max_amplitudes += zero_max_amplitudes
-        batch_norm_factors += zero_norm_factors
-
-        while not content:
-            idx = random.randint(0, len(self.dataset) - 1)
-            label_number = self.get_label_number(self.dataset[idx]['labels'])
-
-            if label_number != 0:
-                continue
-            audio_data = self.dataset[idx]['audio']['array']
-            sr = self.dataset[idx]['audio']['sampling_rate']
-
-            spectrograms, target_amplitudes, norm_factor = self._process_audio_array(audio_data, sr,
-                                                                                     segment_duration=4,
-                                                                                     ignore_last_padded_spec=1)
-            content.extend(
-                [torch.stack([torch.tensor(spectrograms[j]) for _ in range(1)]) for j in range(len(spectrograms))])
-            batch_labels.extend([label_number] * len(spectrograms))
-            batch_sr.extend([sr] * len(spectrograms))
-            batch_max_amplitudes.extend(target_amplitudes)
-            batch_norm_factors.extend([norm_factor] * len(spectrograms))
-            all_count += len(spectrograms)
-            label_count[label_number] = label_count.get(label_number, 0) + len(spectrograms)
-
-        while not style:
-            idx = random.randint(0, len(self.dataset) - 1)
-
-            label_number = self.get_label_number(self.dataset[idx]['labels'])
-
-            if label_number == 0 or label_number == -1:
-                continue
-            audio_data = self.dataset[idx]['audio']['array']
-            sr = self.dataset[idx]['audio']['sampling_rate']
-
-            spectrograms, target_amplitudes, norm_factor = self._process_audio_array(audio_data, sr,
-                                                                                     segment_duration=4,
-                                                                                     ignore_last_padded_spec=1)
-            style.extend(
-                [torch.stack([torch.tensor(spectrograms[j]) for _ in range(1)]) for j in range(len(spectrograms))])
-            batch_labels.extend([label_number] * len(spectrograms))
-            batch_sr.extend([sr] * len(spectrograms))
-            batch_max_amplitudes.extend(target_amplitudes)
-            batch_norm_factors.extend([norm_factor] * len(spectrograms))
-            all_count += len(spectrograms)
-            label_count[label_number] = label_count.get(label_number, 0) + len(spectrograms)
-
-        return {
-            "content": content,
-            "style": style,
-            "ratio": diffs
-        }, torch.tensor(batch_labels), torch.tensor(batch_sr), torch.tensor(
-            batch_max_amplitudes), batch_norm_factors
-
     def __len__(self):
         #write the len into the log file
         with open(self.log_file, 'a') as f:
@@ -481,7 +374,7 @@ class AccentHuggingBasedDataLoader(pl.LightningDataModule):
     def train_dataloader(self):
         # Use the modify_batch function to add noise to the batch
         return DataLoader(AccentHuggingBased(batch_size=self.batch_size, data_type="train", SlowRun=self.SlowRun),
-                          batch_size=1, shuffle=True, num_workers=1)
+                          batch_size=1, shuffle=True, num_workers=4)
 
     def val_dataloader(self):
         return DataLoader(AccentHuggingBased(data_type="test", batch_size=self.batch_size, SlowRun=self.SlowRun),
